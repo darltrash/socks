@@ -18,6 +18,7 @@
 
 #define REN_ATLAS_WIDTH 512
 #define REN_ATLAS_HEIGHT 512
+#define REN_PIXEL_SIZE 1 // Might turn into a variable?
 
 static int width, height;
 static bool resized = false;
@@ -26,8 +27,8 @@ typedef vec_t(Vertex) VertexVec;
 typedef vec_t(Quad) QuadVec;
 typedef vec_t(RenderCall) CallVec;
 
-static CallVec calls; // around 19kb
-static QuadVec quads; // for rendering UI, around 19kb
+static CallVec calls;
+static QuadVec quads; 
 static Light lights[32];
 static int light_index = 0;
 
@@ -292,7 +293,12 @@ int ren_frame() {
         if (canvas.gl_fbo[0] > 0)
             tfx_canvas_free(&canvas);
 
-        canvas = tfx_canvas_new(width/2, height/2, TFX_FORMAT_RGBA8_D24, TFX_TEXTURE_FILTER_POINT);
+        canvas = tfx_canvas_new(
+            width/REN_PIXEL_SIZE, 
+            height/REN_PIXEL_SIZE, 
+            TFX_FORMAT_RGBA8_D24, 
+            TFX_TEXTURE_FILTER_POINT
+        );
 
         if (!program) {
             const char *attribs[] = {
@@ -352,10 +358,12 @@ int ren_frame() {
             flat_quad = tfx_buffer_new(quad, sizeof(quad), &vertex_format, TFX_BUFFER_NONE);
         }
 
-        f32 res[2] = { (f32)width, (f32)height };
+        f32 s = (f32)REN_PIXEL_SIZE;
+        f32 res[2] = { (f32)(width)/s, (f32)(height)/s };
         tfx_set_uniform(&res_uniform, res, 1);
 
-        scale = max(1.0, floorf(min(res[0]/2.0, res[1]/2.0)/300.f));
+        
+        scale = max(1.0, floorf(min(res[0], res[1])/300.f));
 
         if (!scene_triangles.data)
             vec_init(&scene_triangles);
