@@ -11,7 +11,8 @@ jobs:
     runs-on: ubuntu-latest
   
     container:
-      image: docker.io/library/debian:9
+      image: docker.io/library/debian:10
+
 
     steps:
     - name: get packages
