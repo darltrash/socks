@@ -15,7 +15,9 @@ jobs:
 
     steps:
     - name: workaround
-      run: alias sudo=su
+      run: 
+        echo "#!/bin/bash\n\$@" > /usr/bin/sudo
+        chmod +x /usr/bin/sudo
     
     - name: get packages
       uses: Eeems-Org/apt-cache-action@v1.1
@@ -23,7 +25,7 @@ jobs:
         packages: libsdl2-dev ccache gcc luajit unzip zip upx mingw-w64 unzip git
         
     - name: checkout
-      run: git clone https://github.com/darltrash/socks
+      uses: actions/checkout@v4
 
     - uses: hendrikmuhs/ccache-action@v1.2.13
         
