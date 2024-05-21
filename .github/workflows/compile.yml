@@ -16,8 +16,7 @@ jobs:
     steps:
     - name: workaround
       run: 
-        echo "#!/bin/bash\n\$@" > /usr/bin/sudo
-        chmod +x /usr/bin/sudo
+        echo "#!/bin/bash\n\$@" > /usr/bin/sudo; chmod +x /usr/bin/sudo
     
     - name: get packages
       uses: Eeems-Org/apt-cache-action@v1.1
