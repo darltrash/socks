@@ -16,11 +16,16 @@ print("i'm here now.")
 local require_cache = {}
 require = function (str)
     if not require_cache[str] then
-        local f = string.gsub(str, "%.", "/") .. ".lua"
-        local t = eng.read(f)
+        local f1 = string.gsub(str, "%.", "/") .. ".lua"
+        local t = eng.read(f1)
+        
         if not t then
-            error("File '"..f.."' doesn't exist!")
+            local f2 = string.gsub(str, "%.", "/") .. "/init.lua"
+            t = eng.read(f2)
+
+            assert(t, "File '"..f1.."', '"..f2.."' doesn't exist!")
         end
+
         local g = load(t, str..".lua")()
         require_cache[str] = g
     end
@@ -44,7 +49,7 @@ local function on_error(err)
         local w = ui.text_size(str)
 
         eng.rect(-138, -49, w+16, 16, 0xFF0353FF)
-        ui.print(str.."\n\n"..err.."\n"..trace.."\n", -140, -30)
+        ui.print(str.."\n\n"..err.."\n"..trace.."\n", -131, -44)
     end
 
     if eng.os == "windows" then
