@@ -8,7 +8,10 @@ on:
 
 jobs:
   build:
-    runs-on: debian-10
+    runs-on: ubuntu-latest
+  
+    container:
+      image: docker.io/library/debian:9
 
     steps:
     - uses: actions/checkout@v4
