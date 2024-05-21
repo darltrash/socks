@@ -184,7 +184,7 @@ static int api_render() {
     lua_getfield(l, 1, "model");
     if (!lua_isnil(l, -1)) {
         if (!lua_istable(l, -1)) {
-            luaL_error(l, "Argument must be a table");
+            luaL_error(l, "'model' property must be a table");
             return 0;
         }
 
@@ -202,7 +202,7 @@ static int api_render() {
 
     lua_getfield(l, 1, "mesh");
     if (!lua_istable(l, -1)) {
-        luaL_error(l, "Argument must be a table");
+        luaL_error(l, "'mesh' property must be a table");
         return 0;
     }
 
