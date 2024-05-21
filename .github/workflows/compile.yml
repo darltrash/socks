@@ -1,4 +1,4 @@
-name: C/C++ CI
+name: compile
 
 on:
   push:
@@ -8,8 +8,7 @@ on:
 
 jobs:
   build:
-
-    runs-on: ubuntu-latest
+    runs-on: debian-10
 
     steps:
     - uses: actions/checkout@v4
@@ -25,4 +24,4 @@ jobs:
       run: ./setup_mingw.sh
 
     - name: compile
-      run: ./build,lua release
+      run: luajit build,lua release
