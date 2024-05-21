@@ -1,0 +1,28 @@
+name: C/C++ CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: get packages
+      uses: Eeems-Org/apt-cache-action@v1.1
+      with:
+        packages: libsdl2-dev ccache gcc luajit unzip zip upx mingw-w64 unzip
+
+    - uses: hendrikmuhs/ccache-action@v1.2.13
+        
+    - name: setup mingw
+      run: ./setup_mingw.sh
+
+    - name: compile
+      run: ./build,lua release
