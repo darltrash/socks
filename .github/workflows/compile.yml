@@ -14,12 +14,13 @@ jobs:
       image: docker.io/library/debian:9
 
     steps:
-    - uses: actions/checkout@v4
-
     - name: get packages
       uses: Eeems-Org/apt-cache-action@v1.1
       with:
-        packages: libsdl2-dev ccache gcc luajit unzip zip upx mingw-w64 unzip
+        packages: libsdl2-dev ccache gcc luajit unzip zip upx mingw-w64 unzip git
+        
+    - name: checkout
+      run: git clone https://github.com/darltrash/socks
 
     - uses: hendrikmuhs/ccache-action@v1.2.13
         
