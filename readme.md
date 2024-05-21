@@ -11,10 +11,11 @@ i have personally only tried this in my own linux install so i'm not sure it wil
 # the default compiler is "gcc" and it'll try to use ccache if installed and env var NO_CCACHE is not defined
 
 # fedora
-sudo dnf install -y SDL2-devel ccache gcc luajit git unzip zip upx mingw64-gcc mingw64-SDL2
+sudo dnf install -y SDL2-devel ccache gcc luajit unzip zip upx mingw64-gcc mingw64-SDL2
 
 # debian/ubuntu
-sudo apt install -y libSDL2-dev ccache gcc luajit git unzip zip upx
+sudo apt install -y libsdl2-dev ccache gcc luajit unzip zip upx
+./setup_mingw.sh
 
 # releases for both linux and windows
 ./build.lua release    # you can also use release_linux and release_windows
