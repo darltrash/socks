@@ -1,0 +1,8 @@
+*.o
+*.upx
+src/static.h
+thing
+thing.exe
+thing.js
+thing.wasm
+out/

@@ -1,0 +1,7 @@
+{
+    /* HAD to do this. */
+    "Lua.diagnostics.globals": [
+        "eng"
+    ],
+    "Lua.runtime.version": "Lua 5.4"
+}
