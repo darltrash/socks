@@ -13,8 +13,10 @@ jobs:
     container:
       image: docker.io/library/debian:10
 
-
     steps:
+    - name: workaround
+      run: alias sudo=su
+    
     - name: get packages
       uses: Eeems-Org/apt-cache-action@v1.1
       with:
