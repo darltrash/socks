@@ -199,7 +199,7 @@ local function release_windows(dbg)
 
         post = [[
             cp thing.exe out/socks.exe
-            cp out/
+            cp lib/bin/SDL2.dll out/
             cd out/
             zip socks-win64.zip socks.exe SDL2.dll
         ]]

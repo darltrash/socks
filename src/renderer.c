@@ -8,13 +8,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <wctype.h>
+#include <math.h>
 
 #include "vec.h"
 #include "tinyfx.h"
 #include "cute_png.h"
 #include "common.h"
-#include "utf8.h"
 #include "font.h"
 
 #define REN_ATLAS_WIDTH 512

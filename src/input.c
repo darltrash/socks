@@ -1,5 +1,6 @@
 // this implements a basic input system, only keyboard so far
 
+#include <stdio.h>
 #include "common.h"
 #include "vec.h"
 
