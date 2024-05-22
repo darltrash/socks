@@ -144,4 +144,38 @@ fam.shuffle = function (t)
     return out
 end
 
+fam.array_compare = function (a, b)
+    if #a ~= #b then
+        return false
+    end
+
+    for i=1, #a do
+        if (a[i] ~= b[i]) then
+            return false
+        end
+    end
+
+    return true
+end
+
+fam.loop_index = function (array, index)
+    return array[(math.floor(index-1) % #array)+1]
+end
+
+fam.enum = function (array)
+    for _, v in ipairs(array) do
+        array[v] = v
+    end
+end
+
+fam.switch = function (value)
+    return function (map)
+        local a = map[value] or map.default
+        if type(a)=="function" then
+            return a(value)
+        end
+        return a
+    end
+end
+
 return fam

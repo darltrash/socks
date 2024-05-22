@@ -42,6 +42,7 @@ static tfx_uniform target_uniform;
 static tfx_uniform far_uniform;
 static tfx_uniform snap_uniform;
 static tfx_uniform dither_uniform;
+static tfx_uniform scale_uniform;
 static tfx_uniform lposition_uniform;
 static tfx_uniform lcolor_uniform;
 static tfx_uniform lamount_uniform;
@@ -154,6 +155,7 @@ bool ren_init(SDL_Window *_window) {
     far_uniform      = tfx_uniform_new("far",        TFX_UNIFORM_FLOAT, 1);
     snap_uniform     = tfx_uniform_new("snapping",   TFX_UNIFORM_INT,   1);
     dither_uniform   = tfx_uniform_new("dither",     TFX_UNIFORM_INT,   1);
+    scale_uniform    = tfx_uniform_new("scale",      TFX_UNIFORM_INT,   1);
 
     lposition_uniform = tfx_uniform_new("light_positions", TFX_UNIFORM_VEC3, 16);
     lcolor_uniform    = tfx_uniform_new("light_colors",    TFX_UNIFORM_VEC3, 16);
@@ -362,6 +364,8 @@ int ren_frame() {
         f32 res[2] = { (f32)(width)/s, (f32)(height)/s };
         tfx_set_uniform(&res_uniform, res, 1);
 
+        int pixelsize = REN_PIXEL_SIZE;
+        tfx_set_uniform_int(&scale_uniform, &pixelsize, 1);
         
         scale = max(1.0, floorf(min(res[0], res[1])/300.f));
 
@@ -527,8 +531,8 @@ int ren_frame() {
     tfx_set_texture(&image_uniform, &atlas, 0);
     tfx_transient_buffer quad_buffer = tfx_transient_buffer_new(&vertex_format, quads.length*6);
 
-    f32 w = (f32)(width  / scale) / 2.f / 2.f;
-    f32 h = (f32)(height / scale) / 2.f / 2.f;
+    f32 w = (f32)(width  / scale) / 2.f;
+    f32 h = (f32)(height / scale) / 2.f;
 
     mat4_ortho(m, -w, w, -h, h, 0.01f, 100.f);
 

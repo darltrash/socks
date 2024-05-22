@@ -1,5 +1,3 @@
-#define PIXELSCALE 2.0
-
 #ifdef VERTEX
     in vec4 vx_position;
     out vec2 uv;
@@ -17,6 +15,7 @@
 
     uniform sampler2D image;
     uniform bool dither;
+    uniform int scale;
 
     vec2 curve(vec2 uv)
     {
@@ -58,7 +57,7 @@
         
         vec3 c = o.rgb * 8.0;
 
-        vec2 f = gl_FragCoord.xy/PIXELSCALE;
+        vec2 f = gl_FragCoord.xy/float(scale);
 
         c.r += dither4x4(f, fract(c.r));
         c.g += dither4x4(f, fract(c.g));

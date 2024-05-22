@@ -163,7 +163,8 @@ enum {
     INP_DOWN,
     INP_LEFT,
     INP_RIGHT,
-    INP_ACTION,
+
+    INP_JUMP,
     INP_QUICK,
     INP_MENU,
 
@@ -175,6 +176,7 @@ typedef struct {
     SDL_Scancode code;
 } InputBinding;
 
+const char *inp_text();
 void inp_setup();
 void inp_clear();
 void inp_event(SDL_Event event);

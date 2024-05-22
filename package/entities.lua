@@ -1,13 +1,14 @@
+local vec3 = require "lib.vec3"
+local fam  = require "lib.fam"
+
+local player = require "player"
+
 local init = {
-    player = function ()
-        
-    end
+    player = player.init
 }
 
 local tick = {
-    player = function ()
-        
-    end
+    player = player.tick
 }
 
 return {

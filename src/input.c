@@ -14,6 +14,8 @@ static u32 state[INP_MAX];
 
 static vec_t(InputBinding) bindings;
 
+static char text[32];
+
 void inp_setup() {
     if (bindings.data) 
         vec_deinit(&bindings);
@@ -32,12 +34,19 @@ void inp_event(SDL_Event event) {
                 InputBinding b = bindings.data[i];
                 if (!b.binding) continue;
 
+                if (event.key.repeat) return;
+
                 if (event.key.keysym.scancode == b.code) {
                     state[b.binding] = event.type == SDL_KEYDOWN;
                     return;
                 }
             }
             break;
+        }
+
+        case SDL_TEXTINPUT: {
+            memcpy(text, event.text.text, 32);
+            return;
         }
 
         case SDL_JOYAXISMOTION: {
@@ -56,11 +65,17 @@ void inp_event(SDL_Event event) {
 }
 
 bool inp_update(f64 delta) {
+    memset(text, 0, 32);
+    
     for (u32 i = 0; i < INP_MAX; i++)
         if (state[i])
             state[i]++;
     
     return false;
+}
+
+const char *inp_text() {
+    return text;
 }
 
 u32 inp_button(u8 button) {

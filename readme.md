@@ -1,5 +1,5 @@
 ```
-  socks' source code
+  SLEEPYHEAD' source code
 ```
 
 ## how to build
@@ -14,7 +14,7 @@ i have personally only tried this in my own linux install so i'm not sure it wil
 sudo dnf install -y SDL2-devel ccache gcc luajit unzip zip upx mingw64-gcc mingw64-SDL2
 
 # debian/ubuntu
-sudo apt install -y libsdl2-dev ccache gcc luajit unzip zip upx
+sudo apt install -y libsdl2-dev ccache gcc luajit zip upx mingw-w64 git
 ./setup_mingw.sh
 
 # releases for both linux and windows
@@ -32,3 +32,23 @@ sudo apt install -y libsdl2-dev ccache gcc luajit unzip zip upx
 # check out all the available options:
 ./build.lua help
 ```
+
+## tools I used:
+  - Libresprite
+  - VSCodium
+  - Bitwig Studio
+  - Blender
+
+## special thanks:
+  - RXI for [json.lua](https://github.com/rxi/json.lua), [vec](https://github.com/rxi/vec) and [json.lua](https://github.com/rxi/ini), huge inspiration to me
+  - Sean Barrett for his awesome [STB libraries](https://github.com/nothings/stb)
+  - Kikito for [bump.lua](https://github.com/kikito/bump.lua)
+  - Oniietzschan for [porting bump.lua to 3D](https://github.com/oniietzschan/bump-3dpd)
+  - Shakesoda for [TinyFX](https://github.com/shakesoda/tinyfx), the thing I used to write the renderer
+  - Excessive for the [EXM model format and its Blender Addon](https://github.com/excessive/iqm-exm)
+  - the Pontifical Catholic University of Rio de Janeiro for [Lua](https://www.lua.org)
+  - The Simple DirectMedia Layer Team for [SDL](https://www.libsdl.org/), the base of my engine (and a lot out there)
+  - My dad.
+  - My mom.
+  - My friends.
+  - My God.

@@ -304,7 +304,7 @@ static int api_input() {
         "down",
         "left",
         "right",
-        "action",
+        "jump",
         "quick",
         "menu",
         NULL
@@ -318,6 +318,11 @@ static int api_input() {
     else
         lua_pushnil(l);
 
+    return 1;
+}
+
+static int api_text() {
+    lua_pushstring(l, inp_text());
     return 1;
 }
 
@@ -530,6 +535,7 @@ static const luaL_Reg registry[] = {
     { "quad",       api_quad       },
     { "rect",       api_rect       },
     { "input",      api_input      },
+    { "text",       api_text       },
     { "log",        api_log        },
 
     { "mouse_down",     api_mouse_down     },

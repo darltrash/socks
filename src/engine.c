@@ -140,14 +140,14 @@ bool eng_main(Application app) {
     // input
     inp_setup();
 
-    inp_register_scancode("up",    INP_UP    ),
-    inp_register_scancode("down",  INP_DOWN  ),
-    inp_register_scancode("left",  INP_LEFT  ),
-    inp_register_scancode("right", INP_RIGHT ),
+    inp_register_scancode("w", INP_UP    ),
+    inp_register_scancode("s", INP_DOWN  ),
+    inp_register_scancode("a", INP_LEFT  ),
+    inp_register_scancode("d", INP_RIGHT ),
     
-    inp_register_scancode("z",     INP_ACTION),
-    inp_register_scancode("x",     INP_QUICK  ),
-    inp_register_scancode("c",     INP_MENU  ),
+    inp_register_scancode("j", INP_JUMP   ),
+    inp_register_scancode("k", INP_QUICK  ),
+    inp_register_scancode("l", INP_MENU   ),
 
     // for our delta stuff
     printf("setting up timer.\n");

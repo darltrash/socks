@@ -1,3 +1,6 @@
+local assets = require "assets"
+local vec3   = require "lib.vec3"
+local mat4   = require "lib.mat4"
 local ui =  {}
 
 -- Monogram by datagoblin! (datagoblin.itch.io/monogram)
@@ -136,28 +139,6 @@ ui.box = function (x, y, w, h, bg, fg)
     eng.rect(x+5, y+5, w-10, h-10, bg)
 end
 
-local function print_naive(text, x, y, color)
-    local nx, ny = x, y
-    
-    for c in text:gmatch(utf8.charpattern) do
-        if c == "\n" then
-            nx = x
-            ny = ny + 16
-            goto continue
-        end
-
-        local t = ui.font[c] or ui.font.fallback
-    
-        eng.quad(t, nx-t.ox, ny-t.oy+7, color)
-
-        nx = nx + 6
-
-        ::continue::
-    end
-
-    return nx
-end
-
 ui.text_size = function (text)
     local px, py = 0, 0
     local sx, sy = 0, 6
@@ -182,6 +163,28 @@ ui.text_size = function (text)
     return sx, sy
 end
 
+local function print_naive(text, x, y, color)
+    local nx, ny = x, y
+    
+    for c in text:gmatch(utf8.charpattern) do
+        if c == "\n" then
+            nx = x
+            ny = ny + 16
+            goto continue
+        end
+
+        local t = ui.font[c] or ui.font.fallback
+    
+        eng.quad(t, nx-t.ox, ny-t.oy+7, color)
+
+        nx = nx + 6
+
+        ::continue::
+    end
+
+    return nx
+end
+
 ui.print = function (text, x, y, color, wrap)
     if not wrap then
         return print_naive(text, x, y, color)
@@ -204,6 +207,65 @@ ui.print = function (text, x, y, color, wrap)
         nx = x
         ny = ny + 18
     end
+end
+
+
+-- YZ
+local function print_naive_3d(text, vec, color)
+    local p = vec3.mul_val(vec, 16)
+    
+    for c in text:gmatch(utf8.charpattern) do
+        if c == "\n" then
+            p[2] = vec[2] * 16
+            p[3] = p[3] + 16
+            goto continue
+        end
+
+        local t = ui.font[c] or ui.font.fallback
+    
+        local r = {
+            0,
+            (p[2] - t.ox)/16,
+            (p[3] + t.oy + 7)/16
+        }
+
+        eng.render {
+            mesh = assets.plane,
+            model = mat4.from_transform(r, {0, 0, 0}, {1, t[3]/16, t[4]/16}),
+            texture = t,
+            tint = color
+        }
+
+        p[2] = p[2] + 6
+
+        ::continue::
+    end
+
+    return p[2]
+end
+
+ui.print_3d = function (text, vec, color, wrap)
+    if not wrap then
+        return print_naive_3d(text, vec, color)
+    end
+
+--    local p = vec3.copy(vec)
+--
+--    for line in text:gmatch("[^\r\n]+") do
+--        for word in line:gmatch("%S+") do
+--            local w = ui.text_size(word)+6
+--            if (p[2]+w) > (vec[2]+wrap) then
+--                p[2] = vec[2] + 12
+--                p[3] = p[3] + 12
+--            end
+--
+--            print_naive_3d(word, vec3.copy(p), color)
+--            p[2] = p[2] + w
+--        end
+--
+--        p[2] = vec[2]
+--        p[3] = p[3] + 18
+--    end
 end
 
 ui.print_center = function (text, x, y, w, h, color)

@@ -198,10 +198,12 @@ local function release_windows(dbg)
         debug = dbg,
 
         post = [[
-            cp thing.exe out/socks.exe
-            cp lib/bin/SDL2.dll out/
-            cd out/
-            zip socks-win64.zip socks.exe SDL2.dll
+            rm -rf out/socks-win64
+            mkdir -p out/socks-win64
+            cp thing.exe out/socks-win64/socks.exe
+            cp lib/bin/SDL2.dll out/socks-win64
+            cd out/socks-win64
+            zip ../socks-win64.zip socks.exe SDL2.dll
         ]]
     }
 end

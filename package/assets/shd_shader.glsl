@@ -38,7 +38,7 @@
         gl_Position.xyz /= max(gl_Position.w, 0.00001);
         gl_Position.w = 1.0;
         
-        vec2 s = resolution / float(2 + snapping);
+        vec2 s = resolution / float(1 + snapping);
         vec2 r = floor((gl_Position.xy * 0.5 + 0.5) * s);
         gl_Position.xy = (r / s) * 2.0 - 1.0;
 
