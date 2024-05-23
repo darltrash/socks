@@ -10,9 +10,6 @@ local player_animation = {
     { 16+64, 0, 32, 32 },
 }
 
-local STATE_ON_FLOOR = 0
-local STATE_ON_AIR = 1
-
 local handle_wasd = function (flip_x)
     local vel = {0, 0, 0}
 
@@ -38,9 +35,9 @@ local handle_wasd = function (flip_x)
 end
 
 local switch = {
-    [STATE_ON_FLOOR] = function (ent, world)
+    on_floor = function (ent, world)
         if not ent.on_floor then
-            ent.state = STATE_ON_AIR
+            ent.state = "on_air"
             return true -- go off.
         end
 
@@ -48,7 +45,7 @@ local switch = {
         ent.flip_x = flip
 
         if eng.input("jump") then
-            ent.velocity[3] = 0.6
+            ent.velocity[3] = world.superboots and 0.9 or 0.6
         end
 
         ent.animation_timer = ent.animation_timer + 0.15
@@ -66,13 +63,12 @@ local switch = {
         ent.velocity[2] = fam.lerp(ent.velocity[2], v[2], 1/4)
     end,
 
-    [STATE_ON_AIR] = function (ent, world)
+    on_air = function (ent, world)
         if ent.on_floor then
-            ent.state = STATE_ON_FLOOR
+            ent.state = "on_floor"
 
             return true
         end
-
 
         if ent.velocity[3] < 0 then
             ent.scale[3] = fam.lerp(ent.scale[3], 1.3, 1/6)
@@ -87,6 +83,25 @@ local switch = {
 
         ent.velocity[1] = fam.lerp(ent.velocity[1], v[1], 1/8)
         ent.velocity[2] = fam.lerp(ent.velocity[2], v[2], 1/8)
+    end,
+
+    hurt = function (ent, world)
+        if not ent.hurt_counter then
+            ent.hurt_counter = 0.4
+        end
+
+        ent.texture = { 144, 0, 32, 32 }
+
+        ent.hurt_counter = ent.hurt_counter - (1/30)
+
+        ent.velocity[1] = fam.lerp(ent.velocity[1], 0, 1/8)
+        ent.velocity[2] = fam.lerp(ent.velocity[2], 0, 1/8)
+
+        if ent.hurt_counter <= 0 then
+            ent.state = "on_air"
+            ent.hurt_counter = nil
+            return true
+        end
     end
 }
 
@@ -104,7 +119,7 @@ return {
             size   = { 0.2,  2, 1.0}
         }
         
-        ent.state = STATE_ON_AIR
+        ent.state = "on_air"
     end,
 
     tick = function (ent, world)

@@ -117,8 +117,10 @@ local function compile(setup)
     end
 
     local k = "-Ilib/ -Wstringop-overflow=0 -D_POSIX_C_SOURCE=200809L --std=c99 -DTHING_COMMIT='\""..commit.."\"'"
+    local optimizations = "-fdata-sections -ffunction-sections -Wl,--gc-sections"
     if setup.debug then
         k = k .. " -ggdb -DTFX_DEBUG -DTRASH_DEBUG -DFS_NAIVE_FILES"
+        optimizations = "-ggdb"
         print("IGNORING target.should_strip AND target.should_compress")
     else
         k = k .. " -Ofast"
@@ -135,7 +137,6 @@ local function compile(setup)
 
     local output = "thing" .. setup.extension
 
-    local optimizations = "-fdata-sections -ffunction-sections -Wl,--gc-sections"
 
     io.stdout:write("> linking")
     exec(setup.cc, optimizations, dir.."*.o", setup.flags, "-o", output)

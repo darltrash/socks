@@ -31,11 +31,26 @@ local state = {
         self.teleporters = {}
         self.lights = {}
 
+        self.scrunge = 0
+
         self.easter_time = 5
         self.easter_bunny = ""
         self.easter_eggs = {
             ascend = function (self)
-               print("Easter egg system works")
+                print("Easter egg system works")
+            end,
+
+            scrunge = function ()
+                self.scrunge = 255
+                eng.sound_play(assets.the_funny)
+            end,
+
+            killemguys = function ()
+                self.kill_em_guys = true
+            end,
+
+            embootz = function ()
+                self.superboots = true
             end
         }
 
@@ -81,6 +96,7 @@ local state = {
             local s = vec3.mul_val(area.size, 2)
 
             if area.type=="solid" then
+                area.top = p[3] + s[3]
                 self.colliders:add(area, p[1], p[2], p[3], s[1], s[2], s[3])
 
     --        elseif area.type=="area" and area_types[t] then
@@ -159,7 +175,7 @@ local state = {
                     easter(self)
                     break
                 end
-            end 
+            end
         end
 
         if rabbit_barbecue then
@@ -245,6 +261,8 @@ local state = {
         end
     
         self.entities.buffer = {}
+
+        self.kill_em_guys = false
     end,
 
     frame = function (self, alpha, delta)
@@ -279,6 +297,42 @@ local state = {
                 texture = ent.texture
             }
 
+            
+            -- Calculate and render shadow
+            if (ent.collider and not ent.on_floor) or (ent.floats) then
+                local MAX_SHADOW_DEPTH = 16
+                local RAY_THICKNESS = 0.06
+                local RAY_BIAS = 0.1
+
+                local pos = vec3.copy(p)
+                pos[3] = -MAX_SHADOW_DEPTH
+                
+                -- Bump has no raycasting function so I simply check against a veeery
+                -- thin little parallelepiped
+                local items, len = self.colliders:queryCube (
+                    p[1]-(RAY_THICKNESS/2), p[2]-(RAY_THICKNESS/2), p[3]-MAX_SHADOW_DEPTH,
+                    RAY_THICKNESS, RAY_THICKNESS, MAX_SHADOW_DEPTH-RAY_BIAS
+                )
+
+                for i=1, len do
+                    local item = items[i]
+
+                    if item.id == "solid" then
+                        pos[3] = math.max(pos[3], item.top+0.1)
+                    end
+                end
+
+                if pos[3] > -MAX_SHADOW_DEPTH then
+                    local dist = 0.7-(math.abs(pos[3] - p[3])/MAX_SHADOW_DEPTH)
+
+                    eng.render {
+                        model = mat4.from_translation(pos) * mat4.from_scale(dist),
+                        mesh = assets.shadow,
+                        tint = { 0, 0, 0, 180 }
+                    }
+                end
+            end
+
 --            if ent.collider then
 --                local t = vec3.add(p, ent.collider.offset)
 --                t = vec3.add(t, vec3.mul_val(ent.collider.size, 0.5))
@@ -294,7 +348,8 @@ local state = {
             ::continue::
         end
 
-        ui.print_3d("hello world\nhello!", {0, 4, 3}, 0xFFFFFFFF)
+        --local str = "This is a test text! and it's great!\nhello world!\nI love you a lot!"
+        --ui.print_3d(str, {-2, 10, 3}, 0xFFFFFFFF, 120)
 
         do
             local eye = vec3.add (
@@ -314,6 +369,10 @@ local state = {
         eng.render {
             mesh = self.world_mesh
         }
+
+        eng.quad({416, 0, 16*6, 16*6}, -16*3, -16*3, {255, 255, 255, self.scrunge})
+
+        self.scrunge = math.max(0, self.scrunge - delta * 300)
     end
 }
 

@@ -139,16 +139,21 @@ ui.box = function (x, y, w, h, bg, fg)
     eng.rect(x+5, y+5, w-10, h-10, bg)
 end
 
+local NEWLINE_SPACE = 18
+local LINE_SPACE = 12
+
+
 ui.text_size = function (text)
     local px, py = 0, 0
     local sx, sy = 0, 6
+    local whitespace_limit = 0
 
     for c in text:gmatch(utf8.charpattern) do
         local t = ui.font[c] or ui.font.fallback
 
         if (c == "\n") then
             px = 0
-            py = py + 10
+            py = py + NEWLINE_SPACE
             goto continue
         end
 
@@ -157,10 +162,14 @@ ui.text_size = function (text)
 
         px = px + 6
 
+        if (c ~= " ") then
+            whitespace_limit = sx
+        end
+
         ::continue::
     end
 
-    return sx, sy
+    return sx, sy, whitespace_limit
 end
 
 local function print_naive(text, x, y, color)
@@ -169,7 +178,7 @@ local function print_naive(text, x, y, color)
     for c in text:gmatch(utf8.charpattern) do
         if c == "\n" then
             nx = x
-            ny = ny + 16
+            ny = ny + NEWLINE_SPACE
             goto continue
         end
 
@@ -193,11 +202,12 @@ ui.print = function (text, x, y, color, wrap)
     local nx, ny = x, y
 
     for line in text:gmatch("[^\r\n]+") do
-        for word in line:gmatch("%S+") do
-            local w = ui.text_size(word)+6
-            if (nx+w) > (x+wrap) then
+        for word in line:gmatch("(%S+%s*)") do
+            local w, _, ww = ui.text_size(word)
+
+            if (nx+ww) > (x+wrap) then
                 nx = x + 12
-                ny = ny + 12
+                ny = ny + LINE_SPACE
             end
 
             print_naive(word, nx, ny, color)
@@ -205,33 +215,35 @@ ui.print = function (text, x, y, color, wrap)
         end
 
         nx = x
-        ny = ny + 18
+        ny = ny + NEWLINE_SPACE
     end
 end
 
 
--- YZ
+-- TAKES WORLD SPACE, PIXEL SPACE (16 SUBDIVS PER METER)
 local function print_naive_3d(text, vec, color)
-    local p = vec3.mul_val(vec, 16)
-    
+    local v = vec3.add(vec, { 0, 9, -7 })
+
+    local p = { 0, 0, 0 }
+
     for c in text:gmatch(utf8.charpattern) do
         if c == "\n" then
-            p[2] = vec[2] * 16
-            p[3] = p[3] + 16
+            p[2] = 0
+            p[3] = p[3] - NEWLINE_SPACE
             goto continue
         end
 
         local t = ui.font[c] or ui.font.fallback
     
-        local r = {
-            0,
-            (p[2] - t.ox)/16,
-            (p[3] + t.oy + 7)/16
-        }
+        local r = vec3.mul_val({
+            v[1] + 0,
+            v[2] + (p[2] - (t[3] - t.ox)),
+            v[3] + (p[3] - (t[4] - t.oy))
+        }, 1/16)
 
         eng.render {
             mesh = assets.plane,
-            model = mat4.from_transform(r, {0, 0, 0}, {1, t[3]/16, t[4]/16}),
+            model = mat4.from_transform(r, 0, {1, t[3]/16, t[4]/16}),
             texture = t,
             tint = color
         }
@@ -241,31 +253,38 @@ local function print_naive_3d(text, vec, color)
         ::continue::
     end
 
-    return p[2]
 end
 
 ui.print_3d = function (text, vec, color, wrap)
+    eng.render {
+        mesh = assets.cube,
+        model = mat4.from_transform(vec, 0, 0.1),
+        texture = { 0, 0, 1, 1 }
+    }
+
+    local v = vec3.mul_val(vec, 1*16)
+    local p = { 0, 0, 0 }
+
     if not wrap then
-        return print_naive_3d(text, vec, color)
+        return print_naive_3d(text, p, color)
     end
 
---    local p = vec3.copy(vec)
---
---    for line in text:gmatch("[^\r\n]+") do
---        for word in line:gmatch("%S+") do
---            local w = ui.text_size(word)+6
---            if (p[2]+w) > (vec[2]+wrap) then
---                p[2] = vec[2] + 12
---                p[3] = p[3] + 12
---            end
---
---            print_naive_3d(word, vec3.copy(p), color)
---            p[2] = p[2] + w
---        end
---
---        p[2] = vec[2]
---        p[3] = p[3] + 18
---    end
+    for line in text:gmatch("[^\r\n]+") do
+        for word in line:gmatch("(%S+%s*)") do
+            local w, _, ww = ui.text_size(word)
+
+            if (p[2]+ww) > wrap then
+                p[2] = 12
+                p[3] = p[3] - 12
+            end
+
+            print_naive_3d(word, vec3.add(p, v), color)
+            p[2] = p[2] + w
+        end
+
+        p[2] = 0
+        p[3] = p[3] - 18
+    end
 end
 
 ui.print_center = function (text, x, y, w, h, color)

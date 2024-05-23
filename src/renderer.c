@@ -5,6 +5,7 @@
 #include <SDL2/SDL_opengl.h>
 #include <SDL2/SDL_stdinc.h>
 #include <SDL2/SDL_video.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,15 +19,15 @@
 
 #define REN_ATLAS_WIDTH 512
 #define REN_ATLAS_HEIGHT 512
-#define REN_PIXEL_SIZE 1 // Might turn into a variable?
+#define REN_PIXEL_SIZE 1
 
 static int width, height;
-static bool resized = false;
 
 typedef vec_t(Vertex) VertexVec;
 typedef vec_t(Quad) QuadVec;
 typedef vec_t(RenderCall) CallVec;
 
+static vec_char_t logs;
 static CallVec calls;
 static QuadVec quads; 
 static Light lights[32];
@@ -47,22 +48,15 @@ static tfx_uniform lposition_uniform;
 static tfx_uniform lcolor_uniform;
 static tfx_uniform lamount_uniform;
 
-static f32 far = 15.0;
 static Color clear_color = { .full = 0x12002EFF };
 static Color ambient = { .full=0x9966CCFF };
+
+static f32 far = 15.0;
 static int snapping = 0;
 static bool dither = true;
 
-static vec_char_t logs;
-
-
 static tfx_vertex_format vertex_format;
 static f32 view_matrix[16] = IDENTITY_MATRIX;
-
-static char *shader_source = NULL;
-static char *flat_shader_source = NULL;
-static char *wire_shader_source = NULL;
-static char *quad_shader_source = NULL;
 
 static tfx_buffer flat_quad;
 
@@ -108,9 +102,9 @@ bool ren_init(SDL_Window *_window) {
 	SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 0);
 	SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 0);
 
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
 
     i8 vsync = 1;
@@ -123,15 +117,14 @@ bool ren_init(SDL_Window *_window) {
     SDL_GL_SetSwapInterval(vsync);
 
 	SDL_GLContext *context = SDL_GL_CreateContext(window);
-	SDL_GL_GetDrawableSize(window, (int*)&width, (int*)&height);
 	SDL_GL_MakeCurrent(window, context);
 
     SDL_SetWindowMinimumSize(window, 600, 600);
 
     // setup tinyfx stuff
     tfx_platform_data pd;
-	pd.use_gles = true;
-	pd.context_version = 30;
+	pd.use_gles = false;
+	pd.context_version = 33;
 	pd.gl_get_proc_address = SDL_GL_GetProcAddress;
 #ifdef TRASH_DEBUG
     pd.info_log = tfx_debug_thingy;
@@ -161,24 +154,11 @@ bool ren_init(SDL_Window *_window) {
     lcolor_uniform    = tfx_uniform_new("light_colors",    TFX_UNIFORM_VEC3, 16);
     lamount_uniform   = tfx_uniform_new("light_amount",    TFX_UNIFORM_INT,  1);
 
-    resized = true;
-
-    shader_source      = (char *)fs_read("assets/shd_shader.glsl",    0);
-    flat_shader_source = (char *)fs_read("assets/shd_output.glsl",    0);
-    quad_shader_source = (char *)fs_read("assets/shd_2D.glsl",    0);
-
     vec_init(&logs);
     vec_init(&calls);
     vec_init(&quads);
 
     return false;
-}
-
-void ren_resize(u16 width_, u16 height_) {
-    width = width_;
-    height = height_;
-
-    resized = true;
 }
 
 f32 camera_target[3] = { 0.0f, 0.0f, 0.0f };
@@ -273,13 +253,11 @@ int ren_frame() {
     static f32 proj_matrix[16];
 
     int curr_width, curr_height;
-    SDL_GL_GetDrawableSize(window, &curr_width, &curr_height);
+    SDL_GetWindowSize(window, &curr_width, &curr_height);
 
-    if (curr_width != width || curr_height != height)
-        ren_resize(curr_width, curr_height);
-
-    if (resized) {
-        resized = false;
+    if (curr_width != width || curr_height != height) {
+        width = curr_width;
+        height = curr_height;
 
         tfx_reset_flags flags = TFX_RESET_NONE;
 
@@ -310,21 +288,24 @@ int ren_frame() {
                 NULL
             };
 
+            const char *shader_source = fs_read("assets/shd_shader.glsl", 0);
             program = tfx_program_new (
-                (const char*)shader_source, 
-                (const char*)shader_source, 
+                shader_source, 
+                shader_source, 
                 attribs, -1
             );
 
+            const char *flat_shader_source = fs_read("assets/shd_output.glsl", 0);
             out_program = tfx_program_new (
-                (const char*)flat_shader_source, 
-                (const char*)flat_shader_source, 
+                flat_shader_source, 
+                flat_shader_source, 
                 attribs, -1
             );
 
+            const char *quad_shader_source = fs_read("assets/shd_2D.glsl", 0);
             quad_program = tfx_program_new (
-                (const char*)quad_shader_source, 
-                (const char*)quad_shader_source, 
+                quad_shader_source, 
+                quad_shader_source, 
                 attribs, -1
             );
         }
