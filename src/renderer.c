@@ -236,6 +236,12 @@ void ren_dithering(bool dither_) {
     dither = dither_;
 }
 
+f32 scale = 1.0;
+void ren_size(u16 *w, u16 *h) {
+    *w = (u16)ceilf((f32)width/scale);
+    *h = (u16)ceilf((f32)height/scale);
+}
+
 int ren_frame() {
     static tfx_canvas canvas;
     static tfx_program program;
@@ -247,8 +253,6 @@ int ren_frame() {
     static Frustum frustum;
 
     static VertexVec scene_triangles;
-
-    static f32 scale = 1.0;
 
     static f32 proj_matrix[16];
 

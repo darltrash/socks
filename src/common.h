@@ -139,7 +139,7 @@ void ren_far(f32 far, Color clear);
 void ren_ambient(Color ambient);
 void ren_snapping(u8 snap);
 void ren_dithering(bool dither);
-void eng_size(u16 *w, u16 *h);
+void ren_size(u16 *w, u16 *h);
 void ren_byebye();
 
 
@@ -166,7 +166,7 @@ enum {
     INP_RIGHT,
 
     INP_JUMP,
-    INP_QUICK,
+    INP_ATTACK,
     INP_MENU,
 
     INP_MAX

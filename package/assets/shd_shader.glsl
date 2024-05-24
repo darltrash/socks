@@ -48,13 +48,13 @@
         lighting = ambient;
         for (int i=0; i < light_amount; i++) {
             float dist = distance(light_positions[i], vx_position.xyz);
-            float inv_sqr_law = 1.0 / max(0.9, dist*dist);
+            float inv_sqr_law = 1.0 / max(0.8, dist*dist);
 
             lighting += light_colors[i] * inv_sqr_law;
         }
 
         // magic sauce
-        lighting = mix(lighting, vec3(luma(lighting)), smoothstep(0.95, 1.0, luma(lighting)) * 0.25);
+        lighting = mix(lighting, vec3(luma(lighting)), smoothstep(0.25, 1.0, luma(lighting)) * 0.85);
     }
 #endif
 

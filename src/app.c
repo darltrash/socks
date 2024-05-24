@@ -298,6 +298,7 @@ static int api_rect() {
 }
 
 static int api_input() {
+    // KEEP THIS SYNCED WITH COMMON.H
     const char *options[] = {
         "none",
         "up",
@@ -305,7 +306,7 @@ static int api_input() {
         "left",
         "right",
         "jump",
-        "quick",
+        "attack",
         "menu",
         NULL
     };
@@ -359,6 +360,17 @@ static int api_window_size() {
 
     return 2;
 }
+
+static int api_size() {
+    u16 w, h;
+    ren_size(&w, &h);
+
+    lua_pushinteger(l, w);
+    lua_pushinteger(l, h);
+
+    return 2;
+}
+
 
 // eng.music_volume(volume)
 static int api_music_volume() {
@@ -541,6 +553,7 @@ static const luaL_Reg registry[] = {
     { "mouse_down",     api_mouse_down     },
     { "mouse_position", api_mouse_position },
     { "window_size",    api_window_size    },
+    { "size",           api_size           },
 
     { "load_sound",       api_load_sound       },
     { "music_volume",     api_music_volume     },

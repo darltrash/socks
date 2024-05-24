@@ -10,8 +10,8 @@ local entities = require "entities"
 
 local state = {
     init = function (self, world)
-        eng.ambient(0xFFFFFFFF)
-        eng.far(400, 0x1d1137ff)
+        eng.ambient(0x9582b0ff)
+        eng.far(60, 0x0c031aff)
         --eng.dithering(false)
 
         self.colliders = bump.newWorld()
@@ -25,11 +25,15 @@ local state = {
 
         self.entities = {
             map = {},
-            buffer = {}
+            buffer = {},
+            counter = 0
         }
 
+        self.transition = {}
         self.teleporters = {}
         self.lights = {}
+        self.particles = {}
+        self.switches = {}
 
         self.scrunge = 0
 
@@ -134,11 +138,11 @@ local state = {
         ent.position = ent.position or {0, 0, 0}
         ent.velocity = ent.velocity or {0, 0, 0}
         ent.scale    = ent.scale    or {1, 1, 1}
-        ent.rotation = ent.rotation or 0
+        ent.rotation = ent.rotation or {0, 0, 0}
     
         ent._position = vec3.copy(ent.position)
         ent._scale    = vec3.copy(ent.scale)
-        ent._rotation = ent.rotation
+        ent._rotation = vec3.copy(ent.rotation)
     
         table.insert(self.entities.buffer, ent)
         self.entities.map[ent.id] = ent
@@ -182,9 +186,6 @@ local state = {
             self.easter_bunny = ""
         end
 
-
-        local p = self.entities.map.player
-
         for x=#self.entities, 1, -1 do
             local ent = self.entities[x]
     
@@ -199,8 +200,12 @@ local state = {
 
 
             -- Handle some animations
-            if ent._texture and not fam.array_compare(ent._texture, ent.texture) then
-                ent.texture_swap = 0.8
+            if 
+                ent.texture and
+                ent._texture and
+                not fam.array_compare(ent._texture, ent.texture) then
+
+                ent.texture_swap = 0.85
             end
 
             ent._texture  = ent.texture
@@ -219,31 +224,36 @@ local state = {
             -- Handle collision
             if self.colliders:hasItem(ent) then
                 local new_position = vec3.add(ent.position, ent.velocity)
-
                 local hs = ent.collider.offset
                 local t = vec3.add(new_position, hs)
-                local k = {self.colliders:move(ent, t[1], t[2], t[3])}
 
-                local collisions = k[4]
-                ent.on_floor = false
-                for _, col in ipairs(collisions) do
-                    if col.normal.z > 0.5 then
-                        ent.on_floor = true
-                    end
-                end 
+                if ent.ghost_mode then
+                    local s = ent.collider.size
+                    self.colliders:update(ent, t[1], t[2], t[3], s[1], s[2], s[3])
+                else
+                    local k = {self.colliders:move(ent, t[1], t[2], t[3])}
 
-                ent.velocity = vec3.sub(vec3.sub(k, hs, 3), ent.position)
+                    local collisions = k[4]
+                    ent.on_floor = false
+                    for _, col in ipairs(collisions) do
+                        if col.normal.z > 0.5 then
+                            ent.on_floor = true
+                        end
+                    end 
+
+                    ent.velocity = vec3.sub(vec3.sub(k, hs, 3), ent.position)
+                end
             end
 
             ent.position = vec3.add(ent.position, ent.velocity)
     
-
+            local p = self.entities.map.player
             if p and ent.interactable and not self.script then
                 local player_on_area = vec3.distance(p.position, ent.position) < (ent.area or 2)
     
                 if player_on_area then
                     self.interactable = true
-                    ent.interacting = eng.input("action")==1
+                    ent.interacting = eng.input("menu")==1
                 end
             end
     
@@ -253,6 +263,10 @@ local state = {
                 self.entities[x] = self.entities[#self.entities]
                 self.entities[#self.entities] = nil
                 self.entities.map[ent.id] = nil
+
+                if self.colliders:hasItem(ent) then
+                    self.colliders:remove(ent)
+                end
             end
         end
     
@@ -268,12 +282,21 @@ local state = {
     frame = function (self, alpha, delta)
         local cam = self.camera
 
+        for _, light in ipairs(self.lights) do
+            eng.light(light.position, light.color)
+        end
+
         for _, ent in ipairs(self.entities) do
-            if not ent.texture then goto continue end
+            local visible = (ent.texture or ent.mesh) and not ent.invisible
+            if not visible then goto continue end
     
             local p = vec3.lerp(ent._position, ent.position, alpha)
             local s = vec3.lerp(ent._scale,    ent.scale,    alpha)
-            local r = fam.angle_lerp(ent._rotation, ent.rotation, alpha)
+            local r = {
+                fam.angle_lerp(ent._rotation[1], ent.rotation[1], alpha),
+                fam.angle_lerp(ent._rotation[2], ent.rotation[2], alpha),
+                fam.angle_lerp(ent._rotation[3], ent.rotation[3], alpha),
+            }
     
             if ent.camera_focus then
                 cam.target = vec3.add(p, {0, 0, ent.texture[4]/26})
@@ -281,25 +304,32 @@ local state = {
 
             ent.texture_swap = fam.lerp(ent.texture_swap or 1, 1, delta * 6)
     
-            local texture_scale = vec3.mul(
-                s,
-                {
-                    0,
-                    ent.texture[3]/16,
-                    (ent.texture[4]/16) * (ent.texture_swap or 1),
-                }
-            )
+            local real_scale = s
+            
+            if not ent.mesh then
+                real_scale = vec3.mul(
+                    s,
+                    {
+                        0,
+                        ent.texture[3]/16,
+                        (ent.texture[4]/16) * (ent.texture_swap or 1),
+                    }
+                )
+            end
 
             eng.render {
-                model = mat4.from_transform(p, {r, 0, 0}, texture_scale),
-                mesh = assets.plane,
+                model = mat4.from_transform(p, r, real_scale),
+                mesh = ent.mesh or assets.plane,
                 tint = ent.tint,
                 texture = ent.texture
             }
 
             
             -- Calculate and render shadow
-            if (ent.collider and not ent.on_floor) or (ent.floats) then
+            local has_collider_on_air = ent.collider and not ent.on_floor
+            
+
+            if (has_collider_on_air or ent.floats) and not ent.no_shadow then
                 local MAX_SHADOW_DEPTH = 16
                 local RAY_THICKNESS = 0.06
                 local RAY_BIAS = 0.1
@@ -348,8 +378,32 @@ local state = {
             ::continue::
         end
 
+        for i=#self.particles, 1, -1 do
+            local p = self.particles[i]
+
+            p.position = {
+                p.position[1] + p.velocity[1] * delta * p.life,
+                p.position[2] + p.velocity[2] * delta * p.life,
+                p.position[3] + p.velocity[3] * delta * p.life
+            }
+            p.life = p.life - (p.decay_rate*delta)
+            
+            eng.render {
+                mesh = assets.plane,
+                model = mat4.from_transform(p.position, 0, p.scale*(p.life^2)),
+                texture = { 0, 0, 1, 1 }
+            }
+
+            if p.life <= 0 then
+                self.particles[i] = self.particles[#self.particles]
+                self.particles[#self.particles] = nil
+            end
+        end
+
         --local str = "This is a test text! and it's great!\nhello world!\nI love you a lot!"
         --ui.print_3d(str, {-2, 10, 3}, 0xFFFFFFFF, 120)
+        
+        eng.log("particles: " .. #self.particles)
 
         do
             local eye = vec3.add (
@@ -369,6 +423,64 @@ local state = {
         eng.render {
             mesh = self.world_mesh
         }
+
+        -- transition code
+        local trans = self.transition
+        if trans.ease == "in" then
+            if not trans.a then
+                trans.a = 0
+            end
+
+            trans.a = trans.a + delta/2
+            if trans.a >= 1 then
+                trans.a = 1
+                trans.ease = "out"
+            end
+        end
+
+        if trans.ease == "out" then
+            trans.a = trans.a - delta/2
+            
+            if trans.a <= 0 then
+                trans.a = nil
+                trans.ease = nil
+                if trans.callback then
+                    trans.callback()
+                end
+            end
+        end
+
+        if trans.a then
+            local tt = trans.a
+
+            local vw, vh = eng.size()
+            local cs = 16
+            local h = false
+
+            for x=0, vw/cs do
+                for y=0, vh/cs do
+                    local t = tt^2
+    
+                    local tx = (-vw/2)+(x*cs)
+                    local ty = (-vh/2)+(y*cs)
+                    local s = vec3.length{tx/vw, ty/vh}
+    
+                    local g = ((t*1.7)-0.5) + s
+                    local r = fam.inv_square(g) * cs
+                    local m = cs - r
+                    
+                    if h then
+                        eng.rect(tx, ty+(m/2), cs, r, {0, 0, 0, fam.to_u8(g)})
+                    else
+                        eng.rect(tx+(m/2), ty, r, cs, {0, 0, 0, fam.to_u8(g)})
+                    end
+    
+                    h = not h
+                end
+                
+                h = not h
+            end
+        end
 
         eng.quad({416, 0, 16*6, 16*6}, -16*3, -16*3, {255, 255, 255, self.scrunge})
 

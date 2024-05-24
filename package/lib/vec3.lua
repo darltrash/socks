@@ -1,7 +1,9 @@
 local vec3 = {}
 
-vec3.add = function (a, b, len)
-    local out = {}
+local tmp_out = {}
+
+vec3.add = function (a, b, len, out)
+    out = out or {}
     len = len or #a
     for x=1, len do
         out[x] = a[x] + b[x]
@@ -9,8 +11,8 @@ vec3.add = function (a, b, len)
     return out
 end
 
-vec3.sub = function (a, b, len)
-    local out = {}
+vec3.sub = function (a, b, len, out)
+    out = out or {}
     len = len or #a
     for x=1, len do
         out[x] = a[x] - b[x]
@@ -18,8 +20,8 @@ vec3.sub = function (a, b, len)
     return out
 end
 
-vec3.mul = function (a, b, len)
-    local out = {}
+vec3.mul = function (a, b, len, out)
+    out = out or {}
     len = len or #a
     for x=1, len do
         out[x] = a[x] * b[x]
@@ -27,8 +29,8 @@ vec3.mul = function (a, b, len)
     return out
 end
 
-vec3.div = function (a, b, len)
-    local out = {}
+vec3.div = function (a, b, len, out)
+    out = out or {}
     len = len or #a
     for x=1, len do
         out[x] = a[x] / b[x]
@@ -36,17 +38,10 @@ vec3.div = function (a, b, len)
     return out
 end
 
-vec3.mul_val = function (a, b)
-    local out = {}
-    for x=1, #a do
-        out[x] = a[x] * b
-    end
-    return out
-end
-
-vec3.div_val = function (a, b)
-    local out = {}
-    for x=1, #a do
+vec3.mul_val = function (a, b, len, out)
+    out = out or {}
+    len = len or #a
+    for x=1, len do
         out[x] = a[x] * b
     end
     return out
@@ -61,16 +56,24 @@ vec3.dot = function(a, b)
 end
 
 vec3.length = function (a)
-	return math.sqrt(vec3.dot(a, a))
+    local e = 0
+
+    for x=1, #a do
+        e = e + a[x]*a[x]
+    end
+    
+	return math.sqrt(e)
 end
 
 vec3.distance = function (a, b)
     return vec3.length(vec3.sub(a, b))
 end
 
-vec3.normalize = function (a)
-    local out = {}
+vec3.normalize = function (a, out)
+    out = out or {}
+
     local len = vec3.length(a)
+
 	if (len == 0.0) then
 		for i=1, #a do
 			out[i] = 0.0
@@ -91,7 +94,7 @@ end
 vec3.lerp = function(a, b, t)
     local out = {}
 	for x=1, #a do
-		out[x] = lerp(a[x], b[x], t);
+		out[x] = lerp(a[x], b[x], t)
     end
     return out
 end
@@ -99,5 +102,18 @@ end
 vec3.copy = function (a)
     return {table.unpack(a)}
 end
+
+vec3.random = function (len)
+    local r = {}
+
+    for x=1, len do
+        r[x] = math.random(-100, 100)
+    end
+
+    return vec3.normalize(r)
+end
+
+vec3.zero2 = {0, 0}
+vec3.zero3 = {0, 0, 0}
 
 return vec3

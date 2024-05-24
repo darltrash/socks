@@ -146,7 +146,7 @@ bool eng_main(Application app) {
     inp_register_scancode("d", INP_RIGHT ),
 
     inp_register_scancode("j", INP_JUMP   ),
-    inp_register_scancode("k", INP_QUICK  ),
+    inp_register_scancode("k", INP_ATTACK ),
     inp_register_scancode("l", INP_MENU   ),
 
     inp_register_scancode("up",    INP_UP    ),
@@ -155,8 +155,11 @@ bool eng_main(Application app) {
     inp_register_scancode("right", INP_RIGHT ),
 
     inp_register_scancode("z", INP_JUMP   ),
-    inp_register_scancode("x", INP_QUICK  ),
+    inp_register_scancode("x", INP_ATTACK ),
     inp_register_scancode("c", INP_MENU   ),
+
+    // sigh...
+    inp_register_scancode("space", INP_JUMP),
 
     // for our delta stuff
     printf("setting up timer.\n");

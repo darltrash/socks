@@ -6,3 +6,5 @@ thing.exe
 thing.js
 thing.wasm
 out/
+raw/*.blend*
+raw/*.exm

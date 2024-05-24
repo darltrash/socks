@@ -178,4 +178,8 @@ fam.switch = function (value)
     end
 end
 
+fam.inv_square = function (value)
+    return 1-(fam.clamp(1-value, 0, 1)^2)
+end
+
 return fam
