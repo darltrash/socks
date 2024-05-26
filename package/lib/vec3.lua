@@ -65,8 +65,8 @@ vec3.length = function (a)
 	return math.sqrt(e)
 end
 
-vec3.distance = function (a, b)
-    return vec3.length(vec3.sub(a, b))
+vec3.distance = function (a, b, len)
+    return vec3.length(vec3.sub(a, b, len))
 end
 
 vec3.normalize = function (a, out)

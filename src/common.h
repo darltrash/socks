@@ -13,6 +13,8 @@
     #undef far
 #endif
 
+#define LIGHT_AMOUNT 32
+
 
 typedef double f64;
 typedef float f32;

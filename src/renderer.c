@@ -30,8 +30,8 @@ typedef vec_t(RenderCall) CallVec;
 static vec_char_t logs;
 static CallVec calls;
 static QuadVec quads; 
-static Light lights[32];
-static int light_index = 0;
+static Light lights[LIGHT_AMOUNT];
+static u8 light_index = 0;
 
 static tfx_uniform proj_uniform;
 static tfx_uniform image_uniform;
@@ -53,7 +53,7 @@ static Color ambient = { .full=0x9966CCFF };
 
 static f32 far = 15.0;
 static int snapping = 0;
-static bool dither = true;
+static bool dithering = true;
 
 static tfx_vertex_format vertex_format;
 static f32 view_matrix[16] = IDENTITY_MATRIX;
@@ -192,7 +192,7 @@ void ren_quad(Quad quad) {
 }
 
 void ren_light(Light light) {
-    lights[light_index++] = light;
+    lights[light_index++ % LIGHT_AMOUNT] = light;
 }
 
 
@@ -219,21 +219,21 @@ void ren_log(const char *str, ...) {
     vec_pusharr(&logs, buffer, len+1);
 }
 
-void ren_far(f32 f, Color clear) {
-    clear_color = clear;
+void ren_far(f32 f, Color _clear_color) {
     far = f;
+    clear_color = _clear_color;
 }
 
-void ren_ambient(Color amb) {
-    ambient = amb;
+void ren_ambient(Color _ambient) {
+    ambient = _ambient;
 }
 
-void ren_snapping(u8 snap) {
-    snapping = snap;
+void ren_snapping(u8 _snapping) {
+    snapping = _snapping;
 }
 
-void ren_dithering(bool dither_) {
-    dither = dither_;
+void ren_dithering(bool _dithering) {
+    dithering = _dithering;
 }
 
 f32 scale = 1.0;
@@ -415,7 +415,7 @@ int ren_frame() {
 
     tfx_set_uniform_int(&lamount_uniform, &real_index, 1);
 
-    tfx_set_uniform_int(&dither_uniform, (int *)&dither, 1);
+    tfx_set_uniform_int(&dither_uniform, (int *)&dithering, 1);
 
     tfx_set_state(TFX_STATE_RGB_WRITE | TFX_STATE_DEPTH_WRITE);
 

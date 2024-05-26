@@ -1,1 +1,6 @@
-slipi hed
+TODO:
+- Fix interactable UI
+- Add items UI
+- Perhaps redesign .interactable design so it uses a callback instead
+- Implement enemy logic
+- Figure out cool ass needle

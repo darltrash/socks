@@ -19,7 +19,8 @@ local state = {
         self.camera = {
             distance = 5,
             target = {0, 0, 1},
-    
+            instant = false,
+
             -- lerped = {0, 0, 0}
         }
 
@@ -34,6 +35,7 @@ local state = {
         self.lights = {}
         self.particles = {}
         self.switches = {}
+        self.items = {}
 
         self.scrunge = 0
 
@@ -119,7 +121,7 @@ local state = {
         for _, light in ipairs(data.lights) do
             table.insert(self.lights, {
                 position = light.position,
-                color = vec3.mul_val(light.color, light.power * math.exp(-4.5))
+                color = vec3.mul_val(light.color, light.power * math.exp(-4.2))
             })
         end
     end,
@@ -186,6 +188,9 @@ local state = {
             self.easter_bunny = ""
         end
 
+
+        local p = self.entities.map.player
+
         for x=#self.entities, 1, -1 do
             local ent = self.entities[x]
     
@@ -228,8 +233,9 @@ local state = {
                 local t = vec3.add(new_position, hs)
 
                 if ent.ghost_mode then
-                    local s = ent.collider.size
-                    self.colliders:update(ent, t[1], t[2], t[3], s[1], s[2], s[3])
+                    self.colliders:update(ent, t[1], t[2], t[3])
+                    self.velocity = {0, 0, 0}
+                    ent.ghost_mode = false
                 else
                     local k = {self.colliders:move(ent, t[1], t[2], t[3])}
 
@@ -247,8 +253,8 @@ local state = {
 
             ent.position = vec3.add(ent.position, ent.velocity)
     
-            local p = self.entities.map.player
-            if p and ent.interactable and not self.script then
+            ent.interacting = false
+            if p and ent.interactable and not self.transition.ease then
                 local player_on_area = vec3.distance(p.position, ent.position) < (ent.area or 2)
     
                 if player_on_area then
@@ -391,8 +397,13 @@ local state = {
             eng.render {
                 mesh = assets.plane,
                 model = mat4.from_transform(p.position, 0, p.scale*(p.life^2)),
-                texture = { 0, 0, 1, 1 }
+                texture = { 0, 0, 1, 1 },
+                tint = p.color
             }
+
+            if p.light then
+                eng.light(p.position, vec3.mul_val(p.light, p.life, 3))
+            end
 
             if p.life <= 0 then
                 self.particles[i] = self.particles[#self.particles]
@@ -415,7 +426,10 @@ local state = {
                 )
             )
 
+            local t = cam.instant and 1 or (delta * 16)
             cam.lerped = vec3.lerp(cam.lerped or eye, eye, delta * 16)
+
+            cam.instant = false
 
             eng.camera(cam.lerped, cam.target)
         end
@@ -431,22 +445,22 @@ local state = {
                 trans.a = 0
             end
 
-            trans.a = trans.a + delta/2
+            trans.a = trans.a + delta * 0.8
             if trans.a >= 1 then
                 trans.a = 1
                 trans.ease = "out"
+                if trans.callback then
+                    trans.callback()
+                end
             end
         end
 
         if trans.ease == "out" then
-            trans.a = trans.a - delta/2
+            trans.a = trans.a - delta * 0.8
             
             if trans.a <= 0 then
                 trans.a = nil
                 trans.ease = nil
-                if trans.callback then
-                    trans.callback()
-                end
             end
         end
 

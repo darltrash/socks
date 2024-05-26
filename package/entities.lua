@@ -39,6 +39,9 @@ local init = {
 
         ent.interactable = true
         ent.floats = true
+
+        ent.lock = ent.tokens[3]
+        ent.mesh = ent.lock and assets.lock or nil
     end,
 
     jumpybumpy = function (ent)
@@ -46,6 +49,7 @@ local init = {
         ent.no_shadow = true
         ent.mesh = assets.fan
         ent.speed = 0
+        ent.particle_timer = 0
     end,
 
     switch = function (ent, world)
@@ -54,6 +58,15 @@ local init = {
         ent.switch = ent.tokens[2]
         ent.delete = ent.switch == nil
         ent.interactable = true
+        ent.mesh = assets.switch
+    end,
+
+    key = function (ent, world)
+        ent.floats = true
+        ent.interactable = false
+        ent.texture = { 80, 64, 16, 16 }
+        ent.position[3] = ent.position[3] + 1
+        ent.particle_timer = 0
     end
 }
 
@@ -99,15 +112,25 @@ local tick = {
 
     door = function (ent, world)
         local p = world.entities.map.player
+
         if p and ent.interacting then
-            world.entities.map.player = nil
+            if ent.lock then
+                -- check if player has key to door
+                if not player.retrieve_key(ent.lock) then
+                    return
+                end
 
-            p.delete = true
+                -- it has key to door so we'll get rid of the lock icon and the lock itself
+                ent.lock = false
+                ent.mesh = nil
+            end
 
-            world:add_entity {
-                type = "player",
-                position = vec3.add(ent.link.position, {0.2, 0, 0.2})
-            }
+            world.transition.ease = "in"
+            world.transition.callback = function ()
+                world.camera.instant = true
+                p.position = vec3.add(ent.link.position, {1, 0, 1})
+                p.ghost_mode = true
+            end
         end
     end,
 
@@ -123,7 +146,23 @@ local tick = {
 
         ent.rotation[3] = eng.timer * ent.speed * 4
 
-        do
+        ent.particle_timer = ent.particle_timer + ent.speed
+
+        local p = world.entities.map.player
+        local render = true
+        if p then
+            local inside_cylinder = 
+                (vec3.distance(p.position, ent.position, 2) <= ent.area)
+                and (math.abs(p.position[3]-ent.position[3]) <= 4)
+
+            render = vec3.distance(p.position, ent.position) < 15
+
+            if inside_cylinder then
+                p.velocity = vec3.add(p.velocity, {0, 0, ent.speed * 0.12})
+            end
+        end
+
+        if ent.particle_timer > 3 and render then
             local n = vec3.random(3)
             n[3] = 0
             local t = vec3.add(ent.position, n)
@@ -133,15 +172,60 @@ local tick = {
                 velocity = {0, 0, 4},
                 life = ent.speed,
                 scale = 2/16,
-                decay_rate = 0.4
+                decay_rate = 0.2
             })
+
+            ent.particle_timer = 0
         end
     end,
 
     switch = function (ent, world)
         if ent.interacting then
             world.switches[ent.switch] = not world.switches[ent.switch]
+
+            ent.scale[3] = -ent.scale[3]
         end
+    end,
+
+    key = function (ent, world)
+        ent.particle_timer = ent.particle_timer + 0.5
+
+        local render = true
+
+        if world.camera.lerped then
+            render = vec3.distance(world.camera.lerped, ent.position) < 15
+        end
+
+        local p = world.entities.map.player
+        if p and vec3.distance(p.position, ent.position) < 3 then
+            ent.delete = true
+            player.add_to_inventory {
+                sprite = eng.texture,
+                key = ent.tokens[2]
+            }
+            return
+        end
+
+        if ent.particle_timer > 3 and render then
+            local n = vec3.random(3)
+            local t = vec3.add(ent.position, n)
+    
+            table.insert(world.particles, {
+                position = t,
+                velocity = {0, 0, 0.1},
+                life = 1,
+                scale = 2/16,
+                decay_rate = 0.2,
+                light = math.random(1, 3) == 3
+                    and { 0.3, 0.05, 0.1 }
+                    or false,
+                color = { 245, 173, 49, 255 }
+            })
+
+            ent.particle_timer = 0
+        end
+
+        ent.velocity[3] = math.sin(eng.timer*4) * 0.1
     end
 }
 

@@ -3,6 +3,8 @@
 local vec3 = require "lib.vec3"
 local fam  = require "lib.fam"
 
+local inventory = {}
+
 local player_animation = {
     { 16+ 0, 0, 32, 32 },
     { 16+32, 0, 32, 32 },
@@ -216,5 +218,30 @@ return {
 
     tick = function (ent, world)
         while assert(switch[ent.state])(ent, world) do end
+    end,
+
+    set_checkpoint = function (checkpoint_)
+        checkpoint = vec3.copy(checkpoint_)
+    end,
+
+    add_to_inventory = function (item)
+        table.insert(inventory, item)
+    end,
+
+    retrieve_key = function (key)
+        for i=#inventory, 1, -1 do
+            local item = inventory[i]
+            if item.key == key then
+                inventory[i] = inventory[#inventory]
+                inventory[#inventory] = nil
+                return item
+            end
+        end
+
+        return false
+    end,
+
+    draw_inventory = function ()
+        
     end
 }
