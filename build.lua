@@ -143,13 +143,13 @@ local function compile(setup)
     io.stdout:write(" ... ok!\n")
 
     local function attempt(what)
+        if not what then
+            return
+        end
+
         io.stdout:write("> trying to use " .. what .. " on output")
         if setup.debug then
             return io.stdout:write(" ... debug mode, skipping\n")
-        end
-
-        if not what then
-            return io.stdout:write("... not defined!\n")
         end
 
         if not opt_exec(what) then
@@ -199,7 +199,7 @@ local function release_windows(dbg)
         flags = "-lSDL2 -lws2_32",
         strip = "x86_64-w64-mingw32-strip",
         extension = ".exe",
-        upx = nil, -- suppress virus warnings :(
+        upx = false, -- suppress virus warnings :(
         
         debug = dbg,
 
