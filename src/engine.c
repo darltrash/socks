@@ -133,7 +133,7 @@ bool eng_main(Application app) {
     cs_init(NULL, 44100, 1024, NULL);
     cs_spawn_mix_thread();
 
-    cs_set_global_volume(3.0);
+    cs_set_global_volume(2.0);
     if (getenv("BK_NO_VOLUME"))
         cs_set_global_volume(0.0);
 

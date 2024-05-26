@@ -4,7 +4,15 @@ return {
     the_funny = eng.load_sound("assets/snd_boom.ogg"),
     shadow = eng.load_model("assets/mod_shadow.exm"),
     fan = eng.load_model("assets/mod_fan.exm"),
-    --step = eng.load_sound("assets/snd_step.ogg")
     switch = eng.load_model("assets/mod_switch.exm"),
-    lock = eng.load_model("assets/mod_lock.exm")
+    lock = eng.load_model("assets/mod_lock.exm"),
+
+    jump = eng.load_sound("assets/snd_jump.ogg"),
+    grab = eng.load_sound("assets/snd_grab.ogg"),
+    pop  = eng.load_sound("assets/snd_pop.ogg"),
+    floor_hit = eng.load_sound("assets/snd_floor_hit.ogg"),
+    switch_click = eng.load_sound("assets/snd_switch.ogg"),
+    transition_in = eng.load_sound("assets/snd_transition_in.ogg"),
+    transition_out = eng.load_sound("assets/snd_transition_out.ogg"),
+    crocodile_music_for_their_non_existant_ears = eng.load_sound("assets/mus_crocodile.ogg")
 }

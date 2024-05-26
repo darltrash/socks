@@ -2,6 +2,7 @@
 
 local vec3 = require "lib.vec3"
 local fam  = require "lib.fam"
+local assets = require "assets"
 
 local inventory = {}
 
@@ -55,6 +56,8 @@ local function handle_jump(ent, world)
     if eng.input("jump")==1 then
         ent.double_jumped = not ent.on_floor
 
+        eng.sound_play(assets.jump)
+
         ent.scale[3] = 0.7
         ent.texture = player_animation.jumping
         ent.velocity[3] = 0.6
@@ -75,6 +78,7 @@ local function handle_jump(ent, world)
 end
 
 local checkpoint
+local has_died = false
 
 local switch = {
     flashtime = function (ent, world)
@@ -107,7 +111,7 @@ local switch = {
 
         local e = math.floor(ent.animation_timer)
         if e % 2 == 0 and e ~= ent._anim_timer then
-            --eng.sound_play(assets.step)
+            eng.sound_play(assets.floor_hit)
             ent._anim_timer = e
         end
 
@@ -134,6 +138,7 @@ local switch = {
         if ent.on_floor then
             ent.state = "on_floor"
             ent.scale[3] = 1
+            eng.sound_play(assets.floor_hit)
             return true
         end
 
@@ -149,16 +154,19 @@ local switch = {
         if ent.position[3] < -3 then
             ent.delete = true
 
+            eng.sound_play(assets.pop)
             world:add_entity {
                 type = "explosion",
                 position = ent.position,
-                intensity = 3,
+                intensity = 1,
+                boom_counter = has_died and 1.4 or 3,
 
                 in_case_of_boom = function ()
                     world:add_entity {
                         type = "player",
                         position = vec3.copy(checkpoint)
                     }
+                    has_died = true
                 end
             }
             return
@@ -224,24 +232,5 @@ return {
         checkpoint = vec3.copy(checkpoint_)
     end,
 
-    add_to_inventory = function (item)
-        table.insert(inventory, item)
-    end,
-
-    retrieve_key = function (key)
-        for i=#inventory, 1, -1 do
-            local item = inventory[i]
-            if item.key == key then
-                inventory[i] = inventory[#inventory]
-                inventory[#inventory] = nil
-                return item
-            end
-        end
-
-        return false
-    end,
-
-    draw_inventory = function ()
-        
-    end
+    holding = nil
 }

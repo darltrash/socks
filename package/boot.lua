@@ -42,6 +42,8 @@ local function on_error(err)
 
     local ui = require "ui"
 
+    eng.music_stop()
+
     eng.tick = noop
     eng.frame = function ()
         eng.far(0, 0x00000000)
@@ -79,7 +81,7 @@ end
 
 
 -- try to load the game 
-xpcall(require, on_error, "menu")
+xpcall(require, on_error, "game")
 
 -- actual callback bs, all protected
 eng.tick = function ()

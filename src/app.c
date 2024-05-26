@@ -278,6 +278,13 @@ static int api_quad() {
     quad.position[0] = lua_tonumber(l, 2);
     quad.position[1] = lua_tonumber(l, 3);
     quad.color = fetch_color(4);
+    
+    if (!lua_isnoneornil(l, 5))
+        quad.scale[0] = quad.scale[1] = lua_tonumber(l, 5); 
+
+    if (!lua_isnoneornil(l, 6))
+        quad.scale[1] = lua_tonumber(l, 6); 
+
 
     ren_quad(quad);
 
