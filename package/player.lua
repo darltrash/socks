@@ -56,7 +56,7 @@ local function handle_jump(ent, world)
     if eng.input("jump")==1 then
         ent.double_jumped = not ent.on_floor
 
-        eng.sound_play(assets.jump)
+        eng.sound_play(assets.jump, { volume = 0.6 })
 
         ent.scale[3] = 0.7
         ent.texture = player_animation.jumping

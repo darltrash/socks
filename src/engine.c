@@ -229,11 +229,6 @@ bool eng_main(Application app) {
         if (ren_frame())
             return 1;
 
-        // god forbid a man wants to play their games at 300hz+
-        f64 FPS = 1.0/real_delta;
-        if (FPS > 300) 
-            SDL_Delay(1);
-
         SDL_GL_SwapWindow(window);
     }
 

@@ -218,7 +218,7 @@ local tick = {
         local p = world.entities.map.player
         if p and vec3.distance(p.position, ent.position) < 3 then
             ent.delete = true
-            eng.sound_play(assets.grab)
+            eng.sound_play(assets.grab, { volume = 0.3 })
             player.holding = world:add_entity {
                 type = "follower",
                 position = ent.position,

@@ -19,24 +19,23 @@
 
 #define REN_ATLAS_WIDTH 512
 #define REN_ATLAS_HEIGHT 512
-#define REN_PIXEL_SIZE 1
 
 static int width, height;
 
 typedef vec_t(Vertex) VertexVec;
 typedef vec_t(Quad) QuadVec;
 typedef vec_t(RenderCall) CallVec;
+typedef vec_t(Light) LightVec;
 
 static vec_char_t logs;
 static CallVec calls;
 static QuadVec quads; 
-static Light lights[LIGHT_AMOUNT];
-static u8 light_index = 0;
-
+static LightVec lights;
 static tfx_uniform proj_uniform;
 static tfx_uniform image_uniform;
 static tfx_uniform lumos_uniform;
 static tfx_uniform res_uniform;
+static tfx_uniform real_res_uniform;
 static tfx_uniform clear_uniform;
 static tfx_uniform ambient_uniform;
 static tfx_uniform target_uniform;
@@ -48,17 +47,25 @@ static tfx_uniform lposition_uniform;
 static tfx_uniform lcolor_uniform;
 static tfx_uniform lamount_uniform;
 
-static Color clear_color = { .full = 0x12002EFF };
-static Color ambient = { .full=0x9966CCFF };
+static char *shader_prepend = NULL;
+
+static Color clear_color = { .full = 0x000000FF };
+static Color ambient = { .full=0xFFFFFFFF };
 
 static f32 far = 15.0;
 static int snapping = 0;
 static bool dithering = true;
+static bool compat_mode = true;
+static bool resize; 
 
 static tfx_vertex_format vertex_format;
 static f32 view_matrix[16] = IDENTITY_MATRIX;
 
 static tfx_buffer flat_quad;
+
+u16 target_w, target_h;
+bool enable_fill;
+f32 scale = 1.0;
 
 SDL_Window *window;
 
@@ -90,22 +97,18 @@ static void tfx_debug_thingy(const char *str, tfx_severity severity) {
     printf("%s\n", str);
 }
 
+void ren_videomode(u16 w, u16 h, bool fill) {
+    target_w = w;
+    target_h = h;
+    enable_fill = fill;
+    SDL_SetWindowMinimumSize(window, w, h);
+    resize = true;
+}
+
 bool ren_init(SDL_Window *_window) {
     printf("setting up renderer.\n");
 
     window = _window;
-
-    // setup opengl bullshit
-    SDL_GL_SetAttribute(SDL_GL_RED_SIZE,   8);
-	SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
-	SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE,  8);
-	SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 0);
-	SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 0);
-
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
 
     i8 vsync = 1;
     if (SDL_GL_ExtensionSupported("EXT_swap_control_tear"))
@@ -119,12 +122,39 @@ bool ren_init(SDL_Window *_window) {
 	SDL_GLContext *context = SDL_GL_CreateContext(window);
 	SDL_GL_MakeCurrent(window, context);
 
-    SDL_SetWindowMinimumSize(window, 600, 600);
+    ren_videomode(350, 350, true);
+
+    // setup opengl bullshit
+    SDL_GL_SetAttribute(SDL_GL_RED_SIZE,   8);
+	SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
+	SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE,  8);
+	SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 0);
+	SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 0);
+
+    int version = 33;
+
+    #ifdef _WIN32
+        // gles2 is not well supported on Windows
+        compat_mode = false;
+    #endif
+
+    if (compat_mode) {
+        version = 20;
+    	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+    } else {
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+    }
+
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
 
     // setup tinyfx stuff
     tfx_platform_data pd;
-	pd.use_gles = false;
-	pd.context_version = 33;
+	pd.use_gles = compat_mode;
+	pd.context_version = version;
 	pd.gl_get_proc_address = SDL_GL_GetProcAddress;
 #ifdef TRASH_DEBUG
     pd.info_log = tfx_debug_thingy;
@@ -138,10 +168,12 @@ bool ren_init(SDL_Window *_window) {
 	tfx_vertex_format_add(&vertex_format, 2, 4, false, TFX_TYPE_UBYTE); // Color
 	tfx_vertex_format_end(&vertex_format);
 
-    proj_uniform     = tfx_uniform_new("projection", TFX_UNIFORM_MAT4,  1);
-    image_uniform    = tfx_uniform_new("image",      TFX_UNIFORM_INT,   1);
-    lumos_uniform    = tfx_uniform_new("lumos",      TFX_UNIFORM_INT,   1);
-    res_uniform      = tfx_uniform_new("resolution", TFX_UNIFORM_VEC2,  1);
+    proj_uniform     = tfx_uniform_new("projection",      TFX_UNIFORM_MAT4, 1);
+    image_uniform    = tfx_uniform_new("image",           TFX_UNIFORM_INT,  1);
+    lumos_uniform    = tfx_uniform_new("lumos",           TFX_UNIFORM_INT,  1);
+    res_uniform      = tfx_uniform_new("resolution",      TFX_UNIFORM_VEC2, 1);
+    real_res_uniform = tfx_uniform_new("real_resolution", TFX_UNIFORM_VEC2, 1);
+
     clear_uniform    = tfx_uniform_new("clear",      TFX_UNIFORM_VEC4,  1);
     ambient_uniform  = tfx_uniform_new("ambient",    TFX_UNIFORM_VEC3,  1);
     target_uniform   = tfx_uniform_new("target",     TFX_UNIFORM_VEC3,  1);
@@ -157,6 +189,9 @@ bool ren_init(SDL_Window *_window) {
     vec_init(&logs);
     vec_init(&calls);
     vec_init(&quads);
+    vec_init(&lights);
+
+    shader_prepend = (char *)fs_read("assets/shd_library.glsl", NULL);
 
     return false;
 }
@@ -192,7 +227,7 @@ void ren_quad(Quad quad) {
 }
 
 void ren_light(Light light) {
-    lights[light_index++ % LIGHT_AMOUNT] = light;
+    vec_push(&lights, light);
 }
 
 
@@ -236,10 +271,39 @@ void ren_dithering(bool _dithering) {
     dithering = _dithering;
 }
 
-f32 scale = 1.0;
+static f32 resolution[2];
+
 void ren_size(u16 *w, u16 *h) {
-    *w = (u16)ceilf((f32)width/scale);
-    *h = (u16)ceilf((f32)height/scale);
+    if (enable_fill) {
+        *w = (u16)ceilf((f32)width /scale);
+        *h = (u16)ceilf((f32)height/scale);
+        return;
+    }
+
+    *w = (u16)ceilf((f32)target_w/scale);
+    *h = (u16)ceilf((f32)target_h/scale);
+}
+
+static tfx_program shader(const char *file, const char *attribs[]) {
+    u32 length = 0;
+    const char *shader_source = fs_read(file, &length);
+
+    // lazy
+    u32 final_length = length + strlen(shader_prepend) + 32;
+    char *final_source = malloc(final_length);
+
+    if (compat_mode) 
+        snprintf(final_source, final_length, "#define COMPAT_MODE 1\n%s\n%s\n", shader_prepend, shader_source);
+    else
+        snprintf(final_source, final_length, "%s\n%s\n", shader_prepend, shader_source);
+
+    tfx_program program = tfx_program_new (
+        final_source, 
+        final_source, 
+        attribs, -1
+    );
+
+    return program;
 }
 
 int ren_frame() {
@@ -257,11 +321,16 @@ int ren_frame() {
     static f32 proj_matrix[16];
 
     int curr_width, curr_height;
-    SDL_GetWindowSize(window, &curr_width, &curr_height);
+    SDL_GL_GetDrawableSize(window, &curr_width, &curr_height);
 
-    if (curr_width != width || curr_height != height) {
+    if (curr_width != width || curr_height != height)
+        resize = true;
+
+    if (resize) {
         width = curr_width;
         height = curr_height;
+
+        resize = false;
 
         tfx_reset_flags flags = TFX_RESET_NONE;
 
@@ -274,15 +343,34 @@ int ren_frame() {
 
         tfx_reset(width, height, flags);
 
+        scale = max(1.0, floorf(min(width / target_w, height / target_h)));
+
+        resolution[0] = target_w;
+        resolution[1] = target_h;
+        
+        if (enable_fill) {
+            resolution[0] = (f32)(width )/scale;
+            resolution[1] = (f32)(height)/scale;
+        }
+
         if (canvas.gl_fbo[0] > 0)
             tfx_canvas_free(&canvas);
 
         canvas = tfx_canvas_new(
-            width/REN_PIXEL_SIZE, 
-            height/REN_PIXEL_SIZE, 
+            resolution[0], resolution[1], 
             TFX_FORMAT_RGBA8_D24, 
             TFX_TEXTURE_FILTER_POINT
         );
+
+
+        tfx_set_uniform(&res_uniform, resolution, 1);
+
+        f32 real_res[2] = { (f32)(width), (f32)(height) };
+        tfx_set_uniform(&real_res_uniform, real_res, 1);
+
+        int pixelsize = scale;
+        tfx_set_uniform_int(&scale_uniform, &pixelsize, 1);
+
 
         if (!program) {
             const char *attribs[] = {
@@ -292,26 +380,9 @@ int ren_frame() {
                 NULL
             };
 
-            const char *shader_source = fs_read("assets/shd_shader.glsl", 0);
-            program = tfx_program_new (
-                shader_source, 
-                shader_source, 
-                attribs, -1
-            );
-
-            const char *flat_shader_source = fs_read("assets/shd_output.glsl", 0);
-            out_program = tfx_program_new (
-                flat_shader_source, 
-                flat_shader_source, 
-                attribs, -1
-            );
-
-            const char *quad_shader_source = fs_read("assets/shd_2D.glsl", 0);
-            quad_program = tfx_program_new (
-                quad_shader_source, 
-                quad_shader_source, 
-                attribs, -1
-            );
+            program      = shader("assets/shd_shader.glsl", attribs);
+            out_program  = shader("assets/shd_output.glsl", attribs);
+            quad_program = shader("assets/shd_2D.glsl",     attribs);
         }
 
         if (!atlas.gl_count) {
@@ -345,20 +416,11 @@ int ren_frame() {
             flat_quad = tfx_buffer_new(quad, sizeof(quad), &vertex_format, TFX_BUFFER_NONE);
         }
 
-        f32 s = (f32)REN_PIXEL_SIZE;
-        f32 res[2] = { (f32)(width)/s, (f32)(height)/s };
-        tfx_set_uniform(&res_uniform, res, 1);
-
-        int pixelsize = REN_PIXEL_SIZE;
-        tfx_set_uniform_int(&scale_uniform, &pixelsize, 1);
-        
-        scale = max(1.0, floorf(min(res[0], res[1])/300.f));
-
         if (!scene_triangles.data)
             vec_init(&scene_triangles);
     }
 
-    f32 aspect = (f32)width / (f32)height;
+    const f32 aspect = resolution[0] / resolution[1];
 
     mat4_projection(proj_matrix, 80, aspect, 0.001f, far+6.0, false);
     tfx_set_uniform(&proj_uniform, proj_matrix, 1);
@@ -387,40 +449,41 @@ int ren_frame() {
     static f32 m[16];
 
     int real_index = 0;
-    f32 light_positions[16*3];
-    f32 light_colors[16*3];
+    static f32 light_positions[LIGHT_AMOUNT*3];
+    static f32 light_colors[LIGHT_AMOUNT*3];
 
-    for (u8 i = 0; i < light_index; i++) {
-        Light light = lights[i];
+    for (int i = 0; i < lights.length; i++) {
+        Light light = lights.data[i];
 
         f32 area = vec_len(light.color, 3);
 
-        f32 *where = &light_positions[real_index * 3];
+        f32 *color = &light_colors[real_index * 3];
+        f32 *position = &light_positions[real_index * 3];
 
-        mat4_mulvec(where, light.position, view_matrix);
+        mat4_mulvec(position, light.position, view_matrix);
 
-        if (frustum_vs_sphere(frustum, where, area * 2)) {
-            memcpy(&light_colors[real_index * 3], light.color, sizeof(light.color));
+        if (frustum_vs_sphere(frustum, position, area * 2)) {
+            memcpy(color, light.color, sizeof(light.color));
 
-            if (real_index++ == 16)
+            if (real_index++ > LIGHT_AMOUNT)
                 break;
         }
     }
-    light_index = 0;
+
+    vec_clear(&lights);
 
     if (real_index) {
         tfx_set_uniform(&lposition_uniform, light_positions, -1);
         tfx_set_uniform(&lcolor_uniform, light_colors, -1);
     }
 
-    tfx_set_uniform_int(&lamount_uniform, &real_index, 1);
-
-    tfx_set_uniform_int(&dither_uniform, (int *)&dithering, 1);
+    tfx_set_uniform_int(&lamount_uniform, &real_index, -1);
+    tfx_set_uniform_int(&dither_uniform, (int *)&dithering, -1);
 
     tfx_set_state(TFX_STATE_RGB_WRITE | TFX_STATE_DEPTH_WRITE);
 
     // RENDER TRIANGLES
-    u8 view = 1;
+    const u8 view = 1;
     tfx_view_set_clear_depth(view, 1.0);
     tfx_view_set_depth_test(view, TFX_DEPTH_TEST_LT);
     tfx_view_set_clear_color(view, clear_color.full);
@@ -475,7 +538,7 @@ int ren_frame() {
     vec_clear(&calls);
 
     Triangle *t_list = (Triangle *)scene_triangles.data;
-    u32 t_amount = scene_triangles.length/3;
+    const u32 t_amount = scene_triangles.length/3;
 
     tfx_transient_buffer buffer = tfx_transient_buffer_new(&vertex_format, t_amount*3);
     memcpy(buffer.data, scene_triangles.data, t_amount*sizeof(Triangle));
@@ -490,10 +553,11 @@ int ren_frame() {
     ren_log("QUADS:      %i", quads.length);
     ren_log("LIGHTS:     %i", real_index);
 
-    u32 s = (quads.length * 2 * sizeof(Triangle)) +
+    const u32 s = 
+            (quads.length * 2 * sizeof(Triangle)) +
             (t_amount * sizeof(Triangle));
 
-    f32 size = (float)(s) / 1024.0f;
+    const f32 size = (float)(s) / 1024.0f;
     ren_log("GPU UPLOADS: (%.3gkb)", size);
 
     vec_push(&logs, 0);
@@ -509,15 +573,15 @@ int ren_frame() {
     
 
     // RENDER QUADS
-    u8 ui = 3;
+    const u8 ui = 3;
     tfx_set_state(TFX_STATE_RGB_WRITE);
     tfx_view_set_name(ui, "the quad pass");
     tfx_view_set_canvas(ui, &canvas, 0);
     tfx_set_texture(&image_uniform, &atlas, 0);
     tfx_transient_buffer quad_buffer = tfx_transient_buffer_new(&vertex_format, quads.length*6);
 
-    f32 w = (f32)(width  / scale) / 2.f;
-    f32 h = (f32)(height / scale) / 2.f;
+    const f32 w = resolution[0] / 2.f;
+    const f32 h = resolution[1] / 2.f;
 
     mat4_ortho(m, -w, w, -h, h, 0.01f, 100.f);
 
@@ -526,15 +590,15 @@ int ren_frame() {
     for (u32 i = 0; i < quads.length; i++) {
         Quad q = quads.data[i];
 
-        f32 tsx = (q.texture.x) / (f32)atlas.width;
-        f32 tsy = (q.texture.y) / (f32)atlas.height;
-        f32 tcx = (q.texture.x + q.texture.w) / (f32)atlas.width;
-        f32 tcy = (q.texture.y + q.texture.h) / (f32)atlas.height;
+        const f32 tsx = (q.texture.x) / (f32)atlas.width;
+        const f32 tsy = (q.texture.y) / (f32)atlas.height;
+        const f32 tcx = (q.texture.x + q.texture.w) / (f32)atlas.width;
+        const f32 tcy = (q.texture.y + q.texture.h) / (f32)atlas.height;
 
-        f32 qsx = q.position[0];
-        f32 qsy = q.position[1];
-        f32 qcx = q.position[0] + (q.texture.w * q.scale[0]);
-        f32 qcy = q.position[1] + (q.texture.h * q.scale[1]);
+        const f32 qsx = q.position[0];
+        const f32 qsy = q.position[1];
+        const f32 qcx = q.position[0] + (q.texture.w * q.scale[0]);
+        const f32 qcy = q.position[1] + (q.texture.h * q.scale[1]);
 
         #define vertex(e, x, y, u, v) {\
             Vertex tmp = (Vertex) { \
@@ -561,7 +625,7 @@ int ren_frame() {
 
 
     // RENDER OUTPUT
-    u8 post = 4;
+    const u8 post = 4;
     tfx_set_state(TFX_STATE_RGB_WRITE);
     tfx_view_set_depth_test(post, TFX_DEPTH_TEST_NONE);
 	tfx_view_set_name(post, "the output pass");

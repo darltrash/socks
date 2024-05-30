@@ -5,6 +5,7 @@
 #include "common.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define IQM_MAGIC "INTERQUAKEMODEL"
 #define IQM_VERSION 2
@@ -24,7 +25,15 @@ typedef struct {
     unsigned int num_frames, num_framechannels, ofs_frames, ofs_bounds;
     unsigned int num_comment, ofs_comment;
     unsigned int num_extensions, ofs_extensions;
-} iqmheader;
+} IQMHeader;
+
+
+typedef struct {
+  unsigned int name;
+  int parent;
+  Transform transform;
+} IQMJoint;
+
 
 enum
 {
@@ -57,24 +66,42 @@ typedef struct  {
     unsigned int format;
     unsigned int size;
     unsigned int offset;
-} iqmvertexarray;
+} IQMVertexArray;
 
-bool iqm_load(Map *map, const char *data) {
-    iqmheader header = *(iqmheader *)data;
+typedef struct {
+  int parent;
+  unsigned int channelmask;
+  f32 channeloffset[10];
+  f32 channelscale[10];
+} IQMPose;
+
+typedef struct {
+  unsigned int name;
+  unsigned int first_frame, num_frames;
+  f32 framerate;
+  unsigned int flags;
+} IQMAnim;
+
+bool iqm_load(Model *map, const char *data) {
+    IQMHeader header = *(IQMHeader *)data;
 
     // Check data
     if (strcmp(header.magic, IQM_MAGIC)) {
         return true;
     }
 
+    const char *text = header.ofs_text ? &data[header.ofs_text] : "";
+
     // Find our data (does a lot of assumptions but who the fuck cares.)
     f32 *positions = NULL;
     Color *colors = NULL;
     f32 *uvs = NULL;
+    u8 *blend_indices = NULL;
+    u8 *blend_weight = NULL;
 
-    iqmvertexarray *vertex_arrays = (iqmvertexarray *)(data+header.ofs_vertexarrays);
+    IQMVertexArray *vertex_arrays = (IQMVertexArray *)(data+header.ofs_vertexarrays);
     for (u32 i = 0; i < header.num_vertexarrays; i++) {
-        iqmvertexarray va = vertex_arrays[i];
+        IQMVertexArray va = vertex_arrays[i];
         switch (va.type) {
             case IQM_POSITION: {
                 positions = (f32 *)(data+va.offset);
@@ -91,16 +118,32 @@ bool iqm_load(Map *map, const char *data) {
                 break;
             }
 
+            case IQM_BLENDINDEXES: {
+                blend_indices = (u8 *)(data+va.offset);
+                break;
+            }
+
+            case IQM_BLENDWEIGHTS: {
+                blend_weight = (u8 *)(data+va.offset);
+                break;
+            }
+
             default: break;
         }
     }
 
+    RenderBox box = {
+        {0.0, 0.0, 0.0},
+        {0.0, 0.0, 0.0}
+    };
+
     // Assemble data
-    u16 len = header.num_triangles * 3;
-    Vertex *vertices = falloc(Vertex, len);
+    u16 vertex_amount = header.num_triangles * 3;
+    Vertex *vertices = falloc(Vertex, vertex_amount);
+    VertexAnim *animdata = NULL;
 
     u32 *indices = (u32 *)(data+header.ofs_triangles);
-    for (u32 i=0; i < len; i++) {
+    for (u32 i=0; i < vertex_amount; i++) {
         u32 k = indices[i];
         
         Vertex o = {
@@ -109,8 +152,15 @@ bool iqm_load(Map *map, const char *data) {
             { .full = 0xFFFFFFFF }
         };
 
-        if (positions != NULL)
+        if (positions != NULL) {
             memcpy(o.position, &positions[k*3], sizeof(f32)*3);
+
+            for (int i=0; i < 3; i++)
+                box.min[i] = min(box.min[i], o.position[i]);
+                        
+            for (int i=0; i < 3; i++)
+                box.max[i] = max(box.max[i], o.position[i]);
+        }
 
         if (uvs != NULL)
             memcpy(o.uv, &uvs[k*2], sizeof(f32)*2);
@@ -128,13 +178,91 @@ bool iqm_load(Map *map, const char *data) {
             //o.color.b -= (u8)(rand()) % 8;
         }
 
+
+
         vertices[i] = o;
     }
 
-    RenderBox box = {
-        {0.0, 0.0, 0.0},
-        {0.0, 0.0, 0.0}
-    };
+    if (header.num_joints && blend_indices) {
+        animdata = falloc(VertexAnim, vertex_amount);
+
+        for (u32 i=0; i < vertex_amount; i++) {
+            u32 k = indices[i];
+
+            memcpy(animdata[i].bone,   &blend_indices[k*4],4);
+            memcpy(animdata[i].weight, &blend_weight[k*4], 4);
+        }
+
+        map->animation.bones     = malloc(sizeof(Bone)     *header.num_joints);
+        map->animation.bind_pose = malloc(sizeof(Transform)*header.num_joints);
+        map->animation.pose      = malloc(sizeof(Transform)*header.num_joints);
+
+        IQMJoint *joints  = (IQMJoint *)(data+header.ofs_joints);
+        map->animation.bone_amount = header.num_joints;
+
+        for (int i = 0; i < header.num_joints; i++) {
+            const IQMJoint j = joints[i];
+
+            strncpy(map->animation.bones[i].name, &text[j.name], 64);
+
+            map->animation.bones[i].transform = j.transform;
+            map->animation.bones[i].parent = j.parent;
+            map->animation.bind_pose[i] = j.transform;
+        }
+
+        if (header.num_anims) {
+            IQMAnim *rawanim = (IQMAnim *)&data[header.ofs_anims];
+            
+            map->animation.animation_amount = header.num_anims;
+            map->animation.animations = malloc(sizeof(Animation)*header.num_anims);
+
+            for (int i=0; i<header.num_anims; i++) {
+                IQMAnim a = rawanim[i];
+
+                Animation o = {
+                    .name  = strdup(text + a.name),
+                    .first = a.first_frame,
+                    .last  = a.num_frames,
+                    .rate  = a.framerate,
+                    .loops = a.flags,
+                };
+
+                map->animation.animations[i] = o;
+            }  
+        }
+
+        if (header.num_frames) {
+            IQMPose *posedata = (IQMPose *)&data[header.ofs_poses];
+
+            map->animation.frames = malloc(sizeof(AnimationFrame)*header.num_frames);
+            unsigned short *framedata = (unsigned short *)&data[header.ofs_frames];
+            
+            for (int i=0; i<header.num_frames; i++) {
+                Transform *frame = malloc(sizeof(Transform)*header.num_poses);
+                
+                for (int p=0; p<header.num_poses; p++) {
+                    IQMPose *pose = &posedata[p];
+                    
+                    f32 *v = (f32 *)(&frame[p]);
+
+                    for (int o=0; o<10; o++) {
+                        f32 val = pose->channeloffset[o];
+
+                        unsigned int mask = (1 << o);
+
+                        if ((pose->channelmask & mask) > 0) {
+                            val += (*framedata) * pose->channelscale[o];
+                            framedata++;
+                        }
+
+                        v[o] = val;
+                    }
+                }
+                
+                map->animation.frames[i] = frame;
+            }
+        }
+    }
 
     char *exm = NULL;
 
@@ -142,7 +270,7 @@ bool iqm_load(Map *map, const char *data) {
         map->extra = (char *)data+header.ofs_comment;
 
     map->mesh = (MeshSlice) {
-        vertices, len, box
+        vertices, animdata, vertex_amount, box
     };
 
     //free(vertices);
@@ -162,7 +290,7 @@ typedef struct {
     u32 extra_offset;
 } BasketModelHeader;
 
-bool bbm_load(Map *map, const char *data) {
+bool bbm_load(Model *map, const char *data) {
     BasketModelHeader header = *(BasketModelHeader*)(data);
 
     if (strcmp(header.magic, "BASKETMODELv0.1")) {
@@ -182,8 +310,8 @@ bool bbm_load(Map *map, const char *data) {
 }
 
 
-Map mod_load(const char *data) {
-    Map map = (Map) { { 0, 0 }, 0 };
+Model mod_load(const char *data) {
+    Model map = (Model) { { 0, 0 }, {  }, 0 };
 
     if (!iqm_load(&map, data)) {
         return map;

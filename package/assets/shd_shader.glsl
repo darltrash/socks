@@ -1,5 +1,5 @@
 
-#define LIGHT_AMOUNT 16
+#define LIGHT_AMOUNT 32
 
 #ifdef VERTEX
     in vec4 vx_position;
@@ -23,11 +23,6 @@
     out vec2 uv;
     out vec3 lighting;
     out float fog;
-
-    // TODO: Consider unifying vec3 color and vec3 lighting.
-    float luma( vec3 color ) {
-        return dot(vec3(0.2126729, 0.7151522, 0.0721750), color);
-    }
 
     void main() {
         position = vx_position.xyz;
@@ -54,7 +49,7 @@
         }
 
         // magic sauce
-        lighting = mix(lighting, vec3(luma(lighting)), smoothstep(0.25, 1.0, luma(lighting)) * 0.85);
+        lighting = mix(lighting, vec3(luma(lighting)*1.0), smoothstep(0.45, 1.0, luma(lighting)) * 0.95);
     }
 #endif
 
@@ -64,29 +59,11 @@
     in vec2 uv;
     in float fog;
     in vec3 lighting;
-    
-    out vec4 out_color;
 
     uniform sampler2D image;
     uniform sampler2D lumos;
     uniform vec4 clear;
     uniform bool dither;
-
-    float dither4x4( vec2 position, float brightness ) {
-        mat4 dither_table = mat4 (
-            0.0625, 0.5625, 0.1875, 0.6875, 
-            0.8125, 0.3125, 0.9375, 0.4375, 
-            0.2500, 0.7500, 0.1250, 0.6250, 
-            1.0000, 0.5000, 0.8750, 0.3750
-        );
-
-        ivec2 p = ivec2(mod(position, 4.0));
-        
-        float a = step(float(p.x), 3.0);
-        float limit = mix(0.0, dither_table[p.y][p.x], a);
-
-        return step(limit, brightness);
-    }
 
     void main() {
         vec4 o = texture2D(image, uv) * color; // main texture
@@ -107,6 +84,6 @@
 
         o.rgb += l.rgb * l.a * 0.5;
 
-        out_color = o;
+        gl_FragColor = o;
     }
 #endif

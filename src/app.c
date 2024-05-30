@@ -70,7 +70,7 @@ static int api_load_model() {
         return 0;
     }
         
-    Map model = mod_load(str);
+    Model model = mod_load(str);
 
     // TODO: Transform to a special metatype
     lua_newtable(l);
@@ -175,7 +175,7 @@ static int api_render() {
         return 0;
     }
 
-    RenderCall call = { false, IDENTITY_MATRIX, COLOR_WHITE, {}, {0, 0, 0, 0} };
+    RenderCall call = { false, IDENTITY_MATRIX, COLOR_WHITE, {}, {0, 0, 0, 0}, NULL };
 
     lua_getfield(l, 1, "disable");
     if (!lua_isnil(l, -1))

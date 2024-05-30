@@ -38,7 +38,7 @@ sudo apt install -y libsdl2-dev ccache gcc luajit zip upx mingw-w64 git
   - VSCodium
   - Bitwig Studio
   - Blender
-
+  
 ## special thanks:
   - RXI for [json.lua](https://github.com/rxi/json.lua), [vec](https://github.com/rxi/vec) and [json.lua](https://github.com/rxi/ini), huge inspiration to me
   - Sean Barrett for his awesome [STB libraries](https://github.com/nothings/stb)

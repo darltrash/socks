@@ -15,7 +15,6 @@
 
 #define LIGHT_AMOUNT 32
 
-
 typedef double f64;
 typedef float f32;
 
@@ -29,7 +28,7 @@ typedef int32_t i32;
 typedef int16_t i16;
 typedef int8_t  i8;
 
-#define  alloc(type,n) (calloc(n, sizeof(type)))
+#define  alloc(type,n) (calloc(n,  sizeof(type)))
 #define falloc(type,n) (malloc(n * sizeof(type)))
 #define min(a,b) (((a)<(b))?(a):(b))
 #define max(a,b) (((a)>(b))?(a):(b))
@@ -54,6 +53,11 @@ typedef struct {
     f32 far[4];
 } Frustum;
 
+typedef struct {
+    //  vec3         quat         vec3
+    f32 position[3], rotation[4], scale[3];
+} Transform;
+
 #define IDENTITY_MATRIX { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 }
 
 f32 clamp(f32 v, f32 low, f32 high);
@@ -65,10 +69,13 @@ void mat4_lookat(f32 out[16], const f32 eye[3], const f32 at[3], const f32 up[3]
 void mat4_mul(f32 out[16], const f32 a[16], const f32 b[16]);
 void mat4_invert(f32 out[16], const f32 a[16]);
 void mat4_mulvec(f32 out[3], f32 in[3], f32 m[16]);
-void mat4_from_translation(f32 out[16], f32 vec[3]);
-void mat4_from_scale(f32 out[16], f32 vec[3]);
-void mat4_from_angle_axis(f32 out[16], f32 angle, f32 axis[3]);
-void mat4_from_euler_angle(f32 out[16], f32 euler[3]);
+void mat4_from_translation(f32 out[16], const f32 vec[3]);
+void mat4_from_scale(f32 out[16], const f32 vec[3]);
+void mat4_from_angle_axis(f32 out[16], const f32 angle, const f32 axis[3]);
+void mat4_from_euler_angle(f32 out[16], const f32 euler[3]);
+void mat4_from_quaternion(f32 out[16], const f32 quat[4]);
+void mat4_from_transform(f32 out[16], Transform transform);
+
 f32 vec_dot(const f32 *a, const f32 *b, int len);
 f32 vec_len(const f32 *in, int len);
 void vec_min(f32 *out, const f32 *a, const f32 *b, int len);
@@ -77,7 +84,8 @@ void vec_add(f32 *out, f32 *a, f32 *b, int len);
 void vec_sub(f32 *out, f32 *a, f32 *b, int len);
 void vec_lerp(f32 *out, f32 *a, f32 *b, f32 t, int len);
 void vec_norm(f32 *out, const f32 *in, int len);
-void vec3_cross(f32 *out, const f32 *a, const f32 *b);
+void vec3_cross(f32 out[3], const f32 a[3], const f32 b[3]) ;
+
 void frustum_from_mat4(Frustum *f, f32 m[16]);
 bool frustum_vs_aabb(Frustum f, f32 min[3], f32 max[3]);
 bool frustum_vs_sphere(Frustum f, f32 pos[3], f32 radius);
@@ -92,15 +100,47 @@ typedef struct {
 } Vertex;
 
 typedef struct {
+    u8 bone[4];
+    u8 weight[4];
+} VertexAnim;
+
+typedef struct {
     f32 min[3];
     f32 max[3];
 } RenderBox;
 
 typedef struct {
     Vertex *data;
+    VertexAnim *animation;
     u32 length;
     RenderBox box;
 } MeshSlice;
+
+typedef struct {
+    char name[64];
+    u32 parent;
+    Transform transform;
+    f32 transform_mat4[16];
+} Bone;
+
+typedef struct {
+    char *name;
+    u32 first, last;
+    f32 rate;
+    bool loops;
+} Animation;
+
+typedef Transform* AnimationFrame;
+
+typedef struct {
+    Bone *bones;
+    u32 bone_amount;
+    
+    Animation *animations;
+    u32 animation_amount;
+
+    AnimationFrame *frames, bind_pose, pose;
+} AnimationState;
 
 typedef struct {
     u16 x, y, w, h;
@@ -117,6 +157,7 @@ typedef struct {
     Color tint;
     MeshSlice mesh;
     TextureSlice texture;
+    AnimationState *animation;
 } RenderCall;
 
 typedef struct {
@@ -142,6 +183,7 @@ void ren_ambient(Color ambient);
 void ren_snapping(u8 snap);
 void ren_dithering(bool dither);
 void ren_size(u16 *w, u16 *h);
+void ren_videomode(u16 w, u16 h, bool fill);
 void ren_byebye();
 
 
@@ -152,10 +194,12 @@ const char *fs_read(const char *name, u32 *length);
 // MODEL.C
 typedef struct {
     MeshSlice mesh;
-    char *extra;
-} Map;
+    AnimationState animation;
 
-Map mod_load(const char *data);
+    char *extra;
+} Model;
+
+Model mod_load(const char *data);
 
 
 // INPUT.C

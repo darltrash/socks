@@ -116,7 +116,9 @@ local function compile(setup)
         setup.cc = "ccache " .. setup.cc
     end
 
-    local k = "-Ilib/ -Wstringop-overflow=0 -D_POSIX_C_SOURCE=200809L --std=c99 -DTHING_COMMIT='\""..commit.."\"'"
+    local k = "-Ilib/ -Wstringop-overflow=0 -D_POSIX_C_SOURCE=200809L --std=c99 -DTHING_COMMIT='\""..commit.."\"' "
+        .. (setup.file_flags or "")
+    
     local optimizations = "-fdata-sections -ffunction-sections -Wl,--gc-sections"
     if setup.debug then
         k = k .. " -ggdb -DTFX_DEBUG -DTRASH_DEBUG -DFS_NAIVE_FILES"
@@ -214,9 +216,39 @@ local function release_windows(dbg)
     }
 end
 
+local function release_wasm()
+    if true then
+        print("Unsupported :(")
+        return
+    end
+
+    compile {
+        name = "wasm",
+
+        cc = "emcc",
+        flags = "-sUSE_SDL=2 -sOFFSCREEN_FRAMEBUFFER=1 -sFULL_ES3=1 -sWASM=1",
+        file_flags = "-DSDL_DISABLE_IMMINTRIN_H=1 -DCUTE_SOUND_SCALAR_MODE=1",
+        extension = ".js",
+        strip = false,
+        upx = false, -- not even supported
+
+        post = [[
+            rm -rf out/socks-html5
+            mkdir -p out/socks-html5
+            cp thing.js out/socks-html5
+            cp thing.wasm out/socks-html5
+            cp raw/index.html out/socks-html5
+        ]]
+    }
+end
+
 local function release(dbg)
     release_linux(dbg)
     release_windows(dbg)
+
+    if not dbg then
+        release_wasm()
+    end
 end
 
 local function debug()
@@ -271,6 +303,8 @@ local options = {
     debug = debug,
     debug_linux = debug_linux,
     debug_windows = debug_windows,
+
+    release_wasm = release_wasm
 }
 
 options.help = function ()

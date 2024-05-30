@@ -445,8 +445,8 @@ local state = {
                 trans.a = 0
             end
 
-            trans.a = trans.a + delta * 0.8
-            if trans.a >= 1 then
+            trans.a = trans.a + delta * 1.2
+            if trans.a >= 1.4 then
                 trans.a = 1
                 trans.ease = "out"
                 if trans.callback then

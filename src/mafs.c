@@ -1,6 +1,7 @@
 // common math, simple 'nuff.
 
 #include "common.h"
+#include <string.h>
 #include <math.h>
 
 static f32 to_rad(const f32 deg) {
@@ -8,7 +9,7 @@ static f32 to_rad(const f32 deg) {
 }
 
 f32 clamp(f32 v, f32 low, f32 high) {
-	return fmaxf(fminf(v, high), low);
+	return max(min(v, high), low);
 }
 
 f32 lerp(f32 a, f32 b, f32 t) {
@@ -16,13 +17,12 @@ f32 lerp(f32 a, f32 b, f32 t) {
 }
 
 void mat4_projection(f32 out[16], f32 fovy, f32 aspect, f32 near, f32 far, bool infinite) {
+	memset(out, 0, 16 * sizeof(f32));
+
 	f32 t = tanf(to_rad(fovy) / 2.0f);
 	f32 m22 = infinite ? 1.0f : -(far + near) / (far - near);
 	f32 m23 = infinite ? 2.0f * near : -(2.0f * far * near) / (far - near);
 	f32 m32 = -1.0f;
-
-	for (int i = 0; i < 16; i++)
-        out[i] = 0.0f;
 
 	out[0] = 1.0f / (t * aspect);
 	out[5] = 1.0f / t;
@@ -32,15 +32,15 @@ void mat4_projection(f32 out[16], f32 fovy, f32 aspect, f32 near, f32 far, bool 
 }
 
 void mat4_ortho(f32 out[16], f32 left, f32 right, f32 top, f32 bottom, f32 near, f32 far) {
-	memset(out, 0, sizeof(f32) * 16);
+	memset(out, 0, 16 * sizeof(f32));
 	
 	out[0]  = 2.0 / (right - left);
-        out[5]  = 2.0 / (top - bottom);
-        out[10] = -2.0 / (far - near);
-        out[12] = -((right + left) / (right - left));
-        out[13] = -((top + bottom) / (top - bottom));
-        out[14] = -((far + near) / (far - near));
-        out[15] = 1.0;
+	out[5]  = 2.0 / (top - bottom);
+	out[10] = -2.0 / (far - near);
+	out[12] = -((right + left) / (right - left));
+	out[13] = -((top + bottom) / (top - bottom));
+	out[14] = -((far + near) / (far - near));
+	out[15] = 1.0;
 }
 
 void mat4_lookat(f32 out[16], const f32 eye[3], const f32 at[3], const f32 up[3]) {
@@ -70,6 +70,142 @@ void mat4_lookat(f32 out[16], const f32 eye[3], const f32 at[3], const f32 up[3]
 	out[15] = 1.0f;
 }
 
+#ifdef __SSE__
+#include <xmmintrin.h>
+
+void mat4_mul(f32 out[16], const f32 a[16], const f32 b[16]) {
+    __m128 row1 = _mm_load_ps(&b[0]);
+    __m128 row2 = _mm_load_ps(&b[4]);
+    __m128 row3 = _mm_load_ps(&b[8]);
+    __m128 row4 = _mm_load_ps(&b[12]);
+
+    for(int i=0; i<4; i++) {
+        __m128 brod1 = _mm_set1_ps(a[4*i + 0]);
+        __m128 brod2 = _mm_set1_ps(a[4*i + 1]);
+        __m128 brod3 = _mm_set1_ps(a[4*i + 2]);
+        __m128 brod4 = _mm_set1_ps(a[4*i + 3]);
+        __m128 row = _mm_add_ps(
+            _mm_add_ps( _mm_mul_ps(brod1, row1), _mm_mul_ps(brod2, row2) ),
+            _mm_add_ps( _mm_mul_ps(brod3, row3), _mm_mul_ps(brod4, row4) )
+		);
+        _mm_store_ps(&out[4*i], row);
+    }
+}
+
+void mat4_invert(float out[16], const float a[16]) {
+    __m128 minor0, minor1, minor2, minor3;
+    __m128 row0, row1, row2, row3;
+    __m128 det, tmp1;
+
+    tmp1 = _mm_loadh_pi(_mm_loadl_pi(tmp1, (__m64*)(a)), (__m64*)(a+ 4));
+    row1 = _mm_loadh_pi(_mm_loadl_pi(row1, (__m64*)(a+8)), (__m64*)(a+12));
+
+    row0 = _mm_shuffle_ps(tmp1, row1, 0x88);
+    row1 = _mm_shuffle_ps(row1, tmp1, 0xDD);
+
+    tmp1 = _mm_loadh_pi(_mm_loadl_pi(tmp1, (__m64*)(a+ 2)), (__m64*)(a+ 6));
+    row3 = _mm_loadh_pi(_mm_loadl_pi(row3, (__m64*)(a+10)), (__m64*)(a+14));
+
+    row2 = _mm_shuffle_ps(tmp1, row3, 0x88);
+    row3 = _mm_shuffle_ps(row3, tmp1, 0xDD);
+
+    tmp1 = _mm_mul_ps(row2, row3);
+    tmp1 = _mm_shuffle_ps(tmp1, tmp1, 0xB1);
+
+    minor0 = _mm_mul_ps(row1, tmp1);
+    minor1 = _mm_mul_ps(row0, tmp1);
+
+    tmp1 = _mm_shuffle_ps(tmp1, tmp1, 0x4E);
+
+    minor0 = _mm_sub_ps(_mm_mul_ps(row1, tmp1), minor0);
+    minor1 = _mm_sub_ps(_mm_mul_ps(row0, tmp1), minor1);
+    minor1 = _mm_shuffle_ps(minor1, minor1, 0x4E);
+
+    tmp1 = _mm_mul_ps(row1, row2);
+    tmp1 = _mm_shuffle_ps(tmp1, tmp1, 0xB1);
+
+    minor0 = _mm_add_ps(_mm_mul_ps(row3, tmp1), minor0);
+    minor3 = _mm_mul_ps(row0, tmp1);
+
+    tmp1 = _mm_shuffle_ps(tmp1, tmp1, 0x4E);
+
+    minor0 = _mm_sub_ps(minor0, _mm_mul_ps(row3, tmp1));
+    minor3 = _mm_sub_ps(_mm_mul_ps(row0, tmp1), minor3);
+    minor3 = _mm_shuffle_ps(minor3, minor3, 0x4E);
+
+    tmp1 = _mm_mul_ps(_mm_shuffle_ps(row1, row1, 0x4E), row3);
+    tmp1 = _mm_shuffle_ps(tmp1, tmp1, 0xB1);
+    row2 = _mm_shuffle_ps(row2, row2, 0x4E);
+
+    minor0 = _mm_add_ps(_mm_mul_ps(row2, tmp1), minor0);
+    minor2 = _mm_mul_ps(row0, tmp1);
+
+    tmp1 = _mm_shuffle_ps(tmp1, tmp1, 0x4E);
+
+    minor0 = _mm_sub_ps(minor0, _mm_mul_ps(row2, tmp1));
+    minor2 = _mm_sub_ps(_mm_mul_ps(row0, tmp1), minor2);
+    minor2 = _mm_shuffle_ps(minor2, minor2, 0x4E);
+
+    tmp1 = _mm_mul_ps(row0, row1);
+    tmp1 = _mm_shuffle_ps(tmp1, tmp1, 0xB1);
+
+    minor2 = _mm_add_ps(_mm_mul_ps(row3, tmp1), minor2);
+    minor3 = _mm_sub_ps(_mm_mul_ps(row2, tmp1), minor3);
+
+    tmp1 = _mm_shuffle_ps(tmp1, tmp1, 0x4E);
+
+    minor2 = _mm_sub_ps(_mm_mul_ps(row3, tmp1), minor2);
+    minor3 = _mm_sub_ps(minor3, _mm_mul_ps(row2, tmp1));
+
+    tmp1 = _mm_mul_ps(row0, row3);
+    tmp1 = _mm_shuffle_ps(tmp1, tmp1, 0xB1);
+
+    minor1 = _mm_sub_ps(minor1, _mm_mul_ps(row2, tmp1));
+    minor2 = _mm_add_ps(_mm_mul_ps(row1, tmp1), minor2);
+
+    tmp1 = _mm_shuffle_ps(tmp1, tmp1, 0x4E);
+
+    minor1 = _mm_add_ps(_mm_mul_ps(row2, tmp1), minor1);
+    minor2 = _mm_sub_ps(minor2, _mm_mul_ps(row1, tmp1));
+
+    tmp1 = _mm_mul_ps(row0, row2);
+    tmp1 = _mm_shuffle_ps(tmp1, tmp1, 0xB1);
+
+    minor1 = _mm_add_ps(_mm_mul_ps(row3, tmp1), minor1);
+    minor3 = _mm_sub_ps(minor3, _mm_mul_ps(row1, tmp1));
+
+    tmp1 = _mm_shuffle_ps(tmp1, tmp1, 0x4E);
+
+    minor1 = _mm_sub_ps(minor1, _mm_mul_ps(row3, tmp1));
+    minor3 = _mm_add_ps(_mm_mul_ps(row1, tmp1), minor3);
+
+    det = _mm_mul_ps(row0, minor0);
+    det = _mm_add_ps(_mm_shuffle_ps(det, det, 0x4E), det);
+    det = _mm_add_ss(_mm_shuffle_ps(det, det, 0xB1), det);
+
+    tmp1 = _mm_rcp_ss(det);
+
+    det = _mm_sub_ss(_mm_add_ss(tmp1, tmp1), _mm_mul_ss(det, _mm_mul_ss(tmp1, tmp1)));
+    det = _mm_shuffle_ps(det, det, 0x00);
+
+    minor0 = _mm_mul_ps(det, minor0);
+    _mm_storel_pi((__m64*)(out), minor0);
+    _mm_storeh_pi((__m64*)(out+2), minor0);
+
+    minor1 = _mm_mul_ps(det, minor1);
+    _mm_storel_pi((__m64*)(out+4), minor1);
+    _mm_storeh_pi((__m64*)(out+6), minor1);
+
+    minor2 = _mm_mul_ps(det, minor2);
+    _mm_storel_pi((__m64*)(out+ 8), minor2);
+    _mm_storeh_pi((__m64*)(out+10), minor2);
+
+    minor3 = _mm_mul_ps(det, minor3);
+    _mm_storel_pi((__m64*)(out+12), minor3);
+    _mm_storeh_pi((__m64*)(out+14), minor3);
+}
+#else
+
 void mat4_mul(f32 out[16], const f32 a[16], const f32 b[16]) {
 	out[0] = a[0]  * b[0] + a[1]  * b[4] + a[2]  * b[8]  + a[3]  * b[12];
 	out[1] = a[0]  * b[1] + a[1]  * b[5] + a[2]  * b[9]  + a[3]  * b[13];
@@ -91,6 +227,7 @@ void mat4_mul(f32 out[16], const f32 a[16], const f32 b[16]) {
 
 void mat4_invert(f32 out[16], const f32 a[16]) {
 	f32 tmp[16];
+
 	tmp[0]  =  a[5] * a[10] * a[15] - a[5] * a[11] * a[14] - a[9] * a[6] * a[15] + a[9] * a[7] * a[14] + a[13] * a[6] * a[11] - a[13] * a[7] * a[10];
 	tmp[1]  = -a[1] * a[10] * a[15] + a[1] * a[11] * a[14] + a[9] * a[2] * a[15] - a[9] * a[3] * a[14] - a[13] * a[2] * a[11] + a[13] * a[3] * a[10];
 	tmp[2]  =  a[1] * a[6]  * a[15] - a[1] * a[7]  * a[14] - a[5] * a[2] * a[15] + a[5] * a[3] * a[14] + a[13] * a[2] * a[7]  - a[13] * a[3] * a[6];
@@ -108,27 +245,27 @@ void mat4_invert(f32 out[16], const f32 a[16]) {
 	tmp[14] = -a[0] * a[5]  * a[14] + a[0] * a[6]  * a[13] + a[4] * a[1] * a[14] - a[4] * a[2] * a[13] - a[12] * a[1] * a[6]  + a[12] * a[2] * a[5];
 	tmp[15] =  a[0] * a[5]  * a[10] - a[0] * a[6]  * a[9]  - a[4] * a[1] * a[10] + a[4] * a[2] * a[9]  + a[8]  * a[1] * a[6]  - a[8]  * a[2] * a[5];
 
-	f32 det = a[0] * tmp[0] + a[1] * tmp[4] + a[2] * tmp[8] + a[3] * tmp[12];
+	const f32 det = a[0] * tmp[0] + a[1] * tmp[4] + a[2] * tmp[8] + a[3] * tmp[12];
 	if (det == 0.0f) {
-		for (int i = 0; i < 16; i++) {
+		for (int i = 0; i < 16; i++)
 			out[i] = a[i];
-		}
-	}
-	det = 1.0f / det;
 
-	for (int i = 0; i < 16; i++) {
-		out[i] = tmp[i] * det;
+		return;
 	}
+
+	for (int i = 0; i < 16; i++)
+		out[i] = tmp[i] / det;
 }
+#endif
 
 void mat4_mulvec(f32 out[3], f32 in[3], f32 m[16]) {
-	f32 w = 1.0;
-        out[0] = in[0] * m[0] + in[1] * m[4] + in[2] * m[8]  + w * m[12];
-        out[1] = in[0] * m[1] + in[1] * m[5] + in[2] * m[9]  + w * m[13];
-        out[2] = in[0] * m[2] + in[1] * m[6] + in[2] * m[10] + w * m[14];
+	const f32 w = 1.0;
+	out[0] = in[0] * m[0] + in[1] * m[4] + in[2] * m[8]  + w * m[12];
+	out[1] = in[0] * m[1] + in[1] * m[5] + in[2] * m[9]  + w * m[13];
+	out[2] = in[0] * m[2] + in[1] * m[6] + in[2] * m[10] + w * m[14];
 }
 
-void mat4_from_translation(f32 out[16], f32 vec[3]) {
+void mat4_from_translation(f32 out[16], const f32 vec[3]) {
 	f32 m[16] = IDENTITY_MATRIX;
 	m[12] = vec[0];
 	m[13] = vec[1];
@@ -136,7 +273,7 @@ void mat4_from_translation(f32 out[16], f32 vec[3]) {
 	memcpy(out, m, 16 * sizeof(f32));
 }
 
-void mat4_from_scale(f32 out[16], f32 vec[3]) {
+void mat4_from_scale(f32 out[16], const f32 vec[3]) {
 	f32 m[16] = IDENTITY_MATRIX;
 	m[0] = vec[0];
 	m[5] = vec[1];
@@ -144,11 +281,12 @@ void mat4_from_scale(f32 out[16], f32 vec[3]) {
 	memcpy(out, m, 16 * sizeof(f32));
 }
 
-void mat4_from_angle_axis(f32 out[16], f32 angle, f32 axis[3]) {
+void mat4_from_angle_axis(f32 out[16], const f32 angle, const f32 axis[3]) {
 	f32 m[16] = IDENTITY_MATRIX;
 
 	const f32 l = vec_len(axis, 3);
-        if (l > 0.001f) {
+
+    if (l > 0.0001f) {
 		const f32 c = cosf(angle);
 		const f32 s = sinf(angle);
 
@@ -172,25 +310,34 @@ void mat4_from_angle_axis(f32 out[16], f32 angle, f32 axis[3]) {
 	memcpy(out, m, 16 * sizeof(f32));
 }
 
-void mat4_from_euler_angle(f32 out[16], f32 euler[3]) {
-	f32 ex[3] = {1.0f, 0.0f, 0.0f};
-	f32 ey[3] = {0.0f, 1.0f, 0.0f};
-	f32 ez[3] = {0.0f, 0.0f, 1.0f};
+void mat4_from_euler_angle(f32 out[16], const f32 euler[3]) {
+	const f32 ex[3] = {1.0f, 0.0f, 0.0f};
+	const f32 ey[3] = {0.0f, 1.0f, 0.0f};
+	const f32 ez[3] = {0.0f, 0.0f, 1.0f};
 
-	f32 tmp0[16] = IDENTITY_MATRIX;
+	f32 tmp0[16];
 	mat4_from_angle_axis(tmp0, euler[0], ex);
-	f32 tmp1[16] = IDENTITY_MATRIX;
+	f32 tmp1[16];
 	mat4_from_angle_axis(tmp1, euler[1], ey);
 	mat4_mul(out, tmp0, tmp1);
 	mat4_from_angle_axis(tmp0, euler[2], ez);
 	mat4_mul(out, out, tmp0);
 }
 
+void mat4_from_quaternion(f32 out[16], const f32 quat[4]) {
+
+}
+
+void mat4_from_transform(f32 out[16], const Transform transform) {
+
+}
+
 f32 vec_dot(const f32 *a, const f32 *b, int len) {
 	f32 sum = 0.0;
-	for (int i = 0; i < len; i++) {
+
+	for (int i = 0; i < len; i++)
 		sum += a[i] * b[i];
-	}
+
 	return sum;
 }
 
@@ -224,20 +371,20 @@ void vec_lerp(f32 *out, f32 *a, f32 *b, f32 t, int len) {
 };
 
 void vec_norm(f32 *out, const f32 *in, int len) {
-	f32 vlen = vec_len(in, len);
+	const f32 vlen = vec_len(in, len);
+	
 	if (vlen == 0.0f) {
-		for (int i = 0; i < len; i++) {
+		for (int i = 0; i < len; i++)
 			out[i] = 0.0f;
-		}
+
 		return;
 	}
-	vlen = 1.0f / vlen;
-	for (int i = 0; i < len; i++) {
-		out[i] = in[i] * vlen;
-	}
+
+	for (int i = 0; i < len; i++)
+		out[i] = in[i] / vlen;
 }
 
-void vec3_cross(f32 *out, const f32 *a, const f32 *b) {
+void vec3_cross(f32 out[3], const f32 a[3], const f32 b[3]) {
 	out[0] = a[1] * b[2] - a[2] * b[1];
 	out[1] = a[2] * b[0] - a[0] * b[2];
 	out[2] = a[0] * b[1] - a[1] * b[0];
@@ -245,7 +392,8 @@ void vec3_cross(f32 *out, const f32 *a, const f32 *b) {
 
 
 static void f_uglynorm(f32 *out, const f32 *in) {
-	f32 t = vec_len(in, 3);
+	const f32 t = vec_len(in, 3);
+
 	out[0] = in[0] / t;
 	out[1] = in[1] / t;
 	out[2] = in[2] / t;
