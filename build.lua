@@ -251,6 +251,43 @@ local function release(dbg)
     end
 end
 
+local function shader()
+    -- shittier version of pack(), specific for shaders
+
+    local out = assert(io.open("src/shaders.h", "w"))
+
+    out:write "// ./build.lua shader\n\n"
+
+    print()
+
+    for n in io.popen("find src/shaders/* -type f"):lines() do
+        io.stdout:write("> Encoding '", n, "' ... ")
+
+        out:write "const char "
+        local g = n:match("^.+/(.+)$"):gsub("%W", "_")
+        out:write(g)
+        out:write "[] = {\n\t"
+
+        local bytecount = 0
+        local f = assert(io.open(n, "rb"))
+        while f:read(0) do
+            out:write(("0x%02X, "):format(f:read(1):byte()))
+            bytecount = bytecount + 1
+            if bytecount > 9 then
+                bytecount = 0
+                out:write "\n\t"
+            end
+        end
+
+        out:write "0\n};\n\n"
+
+        io.stdout:write("OK\n")
+    end
+    io.stdout:write("\nDone.\n")
+
+    out:close()
+end
+
 local function debug()
     release(true)
 end
@@ -304,7 +341,9 @@ local options = {
     debug_linux = debug_linux,
     debug_windows = debug_windows,
 
-    release_wasm = release_wasm
+    release_wasm = release_wasm,
+
+    shader = shader
 }
 
 options.help = function ()

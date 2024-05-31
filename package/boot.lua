@@ -84,10 +84,10 @@ end
 xpcall(require, on_error, "game")
 
 -- actual callback bs, all protected
-eng.tick = function ()
+eng.tick = function (timestep)
     if not room.tick then return end
 
-    xpcall(room.tick, on_error, room)
+    xpcall(room.tick, on_error, room, timestep)
 end
 
 

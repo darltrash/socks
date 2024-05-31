@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define BASKET_INTERNAL
 #include "common.h"
 
 static SDL_RWops *ops = NULL;

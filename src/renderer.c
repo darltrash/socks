@@ -11,11 +11,13 @@
 #include <string.h>
 #include <math.h>
 
+#define BASKET_INTERNAL
+#include "common.h"
 #include "vec.h"
 #include "tinyfx.h"
 #include "cute_png.h"
-#include "common.h"
-#include "font.h"
+
+#include "shaders.h"
 
 #define REN_ATLAS_WIDTH 512
 #define REN_ATLAS_HEIGHT 512
@@ -46,8 +48,6 @@ static tfx_uniform scale_uniform;
 static tfx_uniform lposition_uniform;
 static tfx_uniform lcolor_uniform;
 static tfx_uniform lamount_uniform;
-
-static char *shader_prepend = NULL;
 
 static Color clear_color = { .full = 0x000000FF };
 static Color ambient = { .full=0xFFFFFFFF };
@@ -191,8 +191,6 @@ bool ren_init(SDL_Window *_window) {
     vec_init(&quads);
     vec_init(&lights);
 
-    shader_prepend = (char *)fs_read("assets/shd_library.glsl", NULL);
-
     return false;
 }
 
@@ -284,18 +282,15 @@ void ren_size(u16 *w, u16 *h) {
     *h = (u16)ceilf((f32)target_h/scale);
 }
 
-static tfx_program shader(const char *file, const char *attribs[]) {
-    u32 length = 0;
-    const char *shader_source = fs_read(file, &length);
-
+static tfx_program shader(const char *data, const char *attribs[]) {
     // lazy
-    u32 final_length = length + strlen(shader_prepend) + 32;
+    u32 final_length = strlen(data) + strlen(library_glsl) + 32;
     char *final_source = malloc(final_length);
 
     if (compat_mode) 
-        snprintf(final_source, final_length, "#define COMPAT_MODE 1\n%s\n%s\n", shader_prepend, shader_source);
+        snprintf(final_source, final_length, "#define COMPAT_MODE 1\n%s\n%s\n", library_glsl, data);
     else
-        snprintf(final_source, final_length, "%s\n%s\n", shader_prepend, shader_source);
+        snprintf(final_source, final_length, "%s\n%s\n", library_glsl, data);
 
     tfx_program program = tfx_program_new (
         final_source, 
@@ -380,9 +375,9 @@ int ren_frame() {
                 NULL
             };
 
-            program      = shader("assets/shd_shader.glsl", attribs);
-            out_program  = shader("assets/shd_output.glsl", attribs);
-            quad_program = shader("assets/shd_2D.glsl",     attribs);
+            program      = shader(shader_glsl, attribs);
+            out_program  = shader(output_glsl, attribs);
+            quad_program = shader(quad_glsl,   attribs);
         }
 
         if (!atlas.gl_count) {

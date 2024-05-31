@@ -1,6 +1,8 @@
 // this implements a basic input system, only keyboard so far
 
 #include <stdio.h>
+
+#define BASKET_INTERNAL
 #include "common.h"
 #include "vec.h"
 
@@ -11,6 +13,11 @@
 
 
 static u32 state[INP_MAX];
+
+typedef struct {
+    u8 binding;
+    SDL_Scancode code;
+} InputBinding;
 
 static vec_t(InputBinding) bindings;
 

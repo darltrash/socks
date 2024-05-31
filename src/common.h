@@ -2,7 +2,6 @@
 
 // big header boy, it glues everything together.
 
-#include <SDL2/SDL_keycode.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <SDL2/SDL.h>
@@ -28,10 +27,12 @@ typedef int32_t i32;
 typedef int16_t i16;
 typedef int8_t  i8;
 
+#ifdef BASKET_INTERNAL
 #define  alloc(type,n) (calloc(n,  sizeof(type)))
 #define falloc(type,n) (malloc(n * sizeof(type)))
 #define min(a,b) (((a)<(b))?(a):(b))
 #define max(a,b) (((a)>(b))?(a):(b))
+#endif
 
 // General
 typedef union { 
@@ -41,6 +42,14 @@ typedef union {
 } Color;
 
 #define COLOR_WHITE (Color){ .full=0xffffffff }
+
+// TEXTURE.C
+typedef struct {
+    Color *color;
+    u16 w, h;
+} Texture;
+
+Texture tex_load(const char *data);
 
 
 // MAFS.C
@@ -169,12 +178,9 @@ typedef struct {
 
 #define DEFAULT_QUAD (Quad){ { 0.0, 0.0 }, { 1.0, 1.0 }, { 0, 0, 0, 0 }, COLOR_WHITE }
 
-bool ren_init(SDL_Window *window);
-int ren_frame();
-void ren_resize(u16, u16);
 void ren_camera(f32 from[3], f32 to[3]);
 void ren_log(const char *str, ...);
-RenderCall *ren_draw(RenderCall);
+RenderCall *ren_draw(RenderCall call);
 void ren_light(Light);
 void ren_quad(Quad quad);
 void ren_rect(i32 x, i32 y, u32 w, u32 h, Color color);
@@ -184,7 +190,16 @@ void ren_snapping(u8 snap);
 void ren_dithering(bool dither);
 void ren_size(u16 *w, u16 *h);
 void ren_videomode(u16 w, u16 h, bool fill);
+
+#ifdef BASKET_INTERNAL
+bool ren_init(SDL_Window *window);
+int ren_frame();
 void ren_byebye();
+#endif
+
+u8 ren_tex_load(Texture texture);
+bool ren_tex_free(u8 id);
+bool ren_tex_bind(u8 main, u8 lumos);
 
 
 // FILESYSTEM.C
@@ -218,30 +233,30 @@ enum {
     INP_MAX
 };
 
-typedef struct {
-    u8 binding;
-    SDL_Scancode code;
-} InputBinding;
-
 const char *inp_text();
-void inp_setup();
 void inp_clear();
-void inp_event(SDL_Event event);
-bool inp_update(f64 delta);
 u32 inp_button(u8 button);
 bool inp_register_scancode(const char *scancode, u8 button);
 bool inp_register_keycode(const char *keycode, u8);
 const char *inp_get_key(u8 button);
 
+#ifdef BASKET_INTERNAL
+void inp_setup();
+void inp_event(SDL_Event event);
+bool inp_update(f64 delta);
+#endif
+
 
 // ENGINE.C
 typedef struct {
-    bool (*init)  (void);
+    bool (*init)  (void* userdata);
     bool (*frame) (f64 alpha, f64 delta, bool focused);
-    bool (*tick)  (void);
+    bool (*tick)  (f64 tickrate);
+    bool (*close) (void);
 } Application; 
 
-bool eng_main(Application);
+bool eng_main(Application app, void *userdata);
+void eng_tickrate(f64 hz);
 void eng_close(); // Will close at the end of the frame
 void eng_window_size(u16 *w, u16 *h); // TODO: This shit is not future proof.
 void eng_mouse_position(u16 *x, u16 *y);

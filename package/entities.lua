@@ -144,10 +144,13 @@ local tick = {
             end
 
             world.transition.ease = "in"
+            p.state = "walk_in"
+            
             world.transition.callback = function ()
                 world.camera.instant = true
                 p.position = vec3.add(ent.link.position, {0.3, 0, 0.3})
                 p.ghost_mode = true
+                p.state = "on_air"
                 player.set_checkpoint(p.position)
 
             end

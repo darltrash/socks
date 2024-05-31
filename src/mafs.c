@@ -1,5 +1,6 @@
 // common math, simple 'nuff.
 
+#define BASKET_INTERNAL
 #include "common.h"
 #include <string.h>
 #include <math.h>
@@ -432,7 +433,7 @@ bool frustum_vs_aabb(Frustum f, f32 min[3], f32 max[3]) {
 		m[0] = p[0] > 0.0 ? max[0] : min[0]; \
 		m[1] = p[1] > 0.0 ? max[1] : min[1]; \
 		m[2] = p[2] > 0.0 ? max[2] : min[2]; \
-		d = p[0] * m[0] + p[1] * m[1] + p[2] * m[2]; \
+		d = vec_dot(p, m, 3); \
 		if (d < -p[3]) return false;
 
 	check(f.left);

@@ -7,14 +7,23 @@ local assets = require "assets"
 local inventory = {}
 
 local player_animation = {
-    { 16+ 0, 0, 32, 32 },
-    { 16+32, 0, 32, 32 },
-    { 16+ 0, 0, 32, 32 },
-    { 16+64, 0, 32, 32 },
+    --front = {
+        { 16+ 0, 0, 32, 32 },
+        { 16+32, 0, 32, 32 },
+        { 16+ 0, 0, 32, 32 },
+        { 16+64, 0, 32, 32 },
+    --},
+
+    back = {
+        { 208, 0, 32, 32 },
+        { 240, 0, 32, 32 },
+        { 208, 0, 32, 32 },
+        { 272, 0, 32, 32 },
+    },
 
     on_air = { 112, 0, 32, 32 },
     hurt = { 144, 0, 32, 32 },
-    jumping = { 176, 0, 32, 32 }
+    jumping = { 176, 0, 32, 32 },
 }
 
 local collider = {
@@ -98,6 +107,7 @@ local switch = {
     end,
 
     on_floor = function (ent, world)
+        ent.tint[4] = math.min(ent.tint[3]+40, 255)
         if not ent.on_floor then
             ent.state = "on_air"
             return true -- go off.
@@ -209,6 +219,15 @@ local switch = {
             ent.hurt_counter = nil
             return true
         end
+    end,
+
+    walk_in = function (ent, world)
+        ent.animation_timer = ent.animation_timer + 0.15
+        ent.texture = fam.loop_index(player_animation.back, ent.animation_timer)
+        ent.tint[4] = ent.tint[4] - 20
+
+        ent.velocity[1] = fam.lerp(ent.velocity[1], 0, 1/3)
+        ent.velocity[2] = fam.lerp(ent.velocity[2], 0, 1/3)
     end
 }
 
@@ -222,6 +241,7 @@ return {
         
         ent.state = ent.state or "on_air"
         ent.id = "player"
+        ent.tint = { 255, 255, 255, 255 }
     end,
 
     tick = function (ent, world)

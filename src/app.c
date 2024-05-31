@@ -586,18 +586,20 @@ static const luaL_Reg registry[] = {
 };
 
 
-bool init() {
+bool init(void *userdata) {
     luaL_loadstring(l, fs_read("boot.lua", NULL));
     lua_call(l, 0, 0);
 
     return false;
 }
 
-bool tick() {
+bool tick(f64 timestep) {
     lua_getglobal(l, "eng");
     lua_getfield(l, -1, "tick");
 
-    int result = lua_pcall(l, 0, 0, 0);
+    lua_pushnumber(l, timestep);
+
+    int result = lua_pcall(l, 1, 0, 0);
 
     lua_pop(l, 1);
 
@@ -607,7 +609,7 @@ bool tick() {
 bool frame(f64 alpha, f64 delta, bool focused) {
     ren_log("\n// ENVIRONMENT //////");
 
-    lua_gc(l, LUA_GCCOLLECT, 0);
+    //lua_gc(l, LUA_GCCOLLECT, 0);
     u32 usage = lua_gc(l, LUA_GCCOUNT, 0);
     ren_log("LUA MEMORY: %ukb", usage);
     ren_log("FPS: %i", (u16)(1.0/delta));
@@ -628,6 +630,12 @@ bool frame(f64 alpha, f64 delta, bool focused) {
 
 // TODO: Consider embedding the actual Lua library within this specific file, and
 //       to fully isolate the engine 
+
+Application app = {
+    .init = init,
+    .tick = tick,
+    .frame = frame
+};
 
 int main(int argc, char *argv[]) {
     printf("setting up environment.\n");
@@ -671,11 +679,7 @@ int main(int argc, char *argv[]) {
 
     lua_setglobal(l, "eng");
 
-    int o = eng_main((Application) {
-        .init = init,
-        .tick = tick,
-        .frame = frame
-    });
+    int o = eng_main(app, NULL);
 
     if (l)
         lua_close(l);

@@ -1,5 +1,6 @@
 // the brain.
 
+#include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -7,12 +8,14 @@
 #include <SDL2/SDL_events.h>
 #include <SDL2/SDL_video.h>
 
+#define BASKET_INTERNAL
 #include "common.h"
 #include "cute_sound.h"
 #include "cute_png.h"
 
-#define TIMESTEP 0.03333333333333333333333333333333
-static f64 lag = TIMESTEP;
+static f64 timestep;
+static f64 lag;// = timestep;
+static bool instant = false;
 
 static bool running = true;
 static bool focused = true;
@@ -110,11 +113,20 @@ bool eng_mouse_down(u8 button) {
     return mouse_button[button % 3];
 }
 
+void eng_tickrate(f64 hz) {
+    instant = hz == 0.0;
+    timestep = 1.0/hz;
+}
 
-bool eng_main(Application app) {
+
+bool eng_main(Application app, void *userdata) {
     printf("waste basket, keep my brain entertained.\n");
 
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
+
+    assert(app.init);
+    assert(app.tick);
+    assert(app.frame);
 
   	SDL_Window *window = SDL_CreateWindow(
         "socks",
@@ -172,8 +184,12 @@ bool eng_main(Application app) {
 
     f64 timer;
 
-    if (app.init())
+    eng_tickrate(30);
+
+    if (app.init(userdata))
         return 1;
+
+    lag = timestep;
 
     running = true;
 
@@ -196,35 +212,53 @@ bool eng_main(Application app) {
             delta += deltas[i];
         delta /= (f64)delta_len;
 
-        // fixed timesteps
-        lag += real_delta;
-        u8 n = 0;
-        while (lag > TIMESTEP) {
-            lag -= TIMESTEP;
 
-            // input polling! (delicious)
+        if (instant) {
             SDL_Event ev;
             while (SDL_PollEvent(&ev))
                 event(ev, window);
 
             if (focused)
-                app.tick();
+                app.tick(timestep);
 
-            inp_update(TIMESTEP);
+            inp_update(timestep);
 
-            // computer is too god damn slow, sorry.
-            if (n++ == 3) {
-                lag = 0.0;
-                printf("Could not hit 30hz!\n");
-                break;
+        } else {
+            // fixed timesteps
+            lag += real_delta;
+            u8 n = 0;
+            while (lag > timestep) {
+                lag -= timestep;
+
+                // input polling! (delicious)
+                SDL_Event ev;
+                while (SDL_PollEvent(&ev))
+                    event(ev, window);
+
+                if (focused)
+                    app.tick(timestep);
+
+                inp_update(timestep);
+
+                // computer is too god damn slow, sorry.
+                if (n++ == 3) {
+                    lag = 0.0;
+                    printf("Could not hit %.2fhz!\n", 1.0/timestep);
+                    break;
+                }
             }
+
         }
 
-        if (app.frame(lag / TIMESTEP, delta, focused))
+        if (app.frame(lag / timestep, delta, focused))
             return 1;
 
-        if (!focused)
-            ren_rect(-700, -700, 700*2, 700*2, (Color){200, 0, 0, 0});
+        if (!focused) {
+            u16 w, h; 
+            ren_size(&w, &h);
+
+            ren_rect(-w, -w, h, h, (Color){ .full = 0x000000FF });
+        }
 
         if (ren_frame())
             return 1;
@@ -243,6 +277,9 @@ bool eng_main(Application app) {
     SDL_Quit();
 
     printf("the end.\n");
+
+    if (app.close)
+        app.close();
 
     return 0;
 }

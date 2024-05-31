@@ -2,6 +2,7 @@
 // it can only understand a super specific version of IQM files 
 // because I cant bother to make it generalized.
 
+#define BASKET_INTERNAL
 #include "common.h"
 #include <stdio.h>
 #include <stdlib.h>
