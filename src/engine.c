@@ -11,7 +11,6 @@
 #define BASKET_INTERNAL
 #include "common.h"
 #include "cute_sound.h"
-#include "cute_png.h"
 
 static f64 timestep;
 static f64 lag;// = timestep;

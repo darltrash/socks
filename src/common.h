@@ -45,11 +45,12 @@ typedef union {
 
 // TEXTURE.C
 typedef struct {
-    Color *color;
+    Color *pixels;
     u16 w, h;
 } Texture;
 
-Texture tex_load(const char *data);
+Texture tex_load(const char *data, u32 length);
+void tex_free(Texture texture);
 
 
 // MAFS.C
@@ -197,6 +198,7 @@ int ren_frame();
 void ren_byebye();
 #endif
 
+u8 ren_tex_load_mem(const char *data, u32 length);
 u8 ren_tex_load(Texture texture);
 bool ren_tex_free(u8 id);
 bool ren_tex_bind(u8 main, u8 lumos);

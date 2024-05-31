@@ -307,7 +307,7 @@ local function run()
     check_exec("tcc")
 
     local a = "-Ilib/ -lSDL2 -lm -pthread"
-    local k = "-DTRASH_DEBUG -DFS_NAIVE_FILES -DSDL_DISABLE_IMMINTRIN_H -DCUTE_SOUND_SCALAR_MODE"
+    local k = "-DTRASH_DEBUG -DFS_NAIVE_FILES -DSDL_DISABLE_IMMINTRIN_H -DCUTE_SOUND_SCALAR_MODE -DSTBI_NO_SIMD"
 
     os.execute("tcc "..a.." "..k.." src/*.c lib/*.c -o thing")
     print("tcc "..a.." "..k.." src/*.c lib/*.c -o thing")

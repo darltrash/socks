@@ -590,6 +590,20 @@ bool init(void *userdata) {
     luaL_loadstring(l, fs_read("boot.lua", NULL));
     lua_call(l, 0, 0);
 
+    u32 length = 0;
+    u8 main, lumos;
+    {
+        const char *raw = fs_read("assets/tex_atlas.png", &length);
+        main = ren_tex_load_mem(raw, length);
+    }
+
+    {
+        const char *raw = fs_read("assets/tex_lumos.png", &length);
+        lumos = ren_tex_load_mem(raw, length);
+    }
+
+    ren_tex_bind(main, lumos);
+
     return false;
 }
 

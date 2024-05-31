@@ -15,7 +15,6 @@
 #include "common.h"
 #include "vec.h"
 #include "tinyfx.h"
-#include "cute_png.h"
 
 #include "shaders.h"
 
@@ -33,6 +32,7 @@ static vec_char_t logs;
 static CallVec calls;
 static QuadVec quads; 
 static LightVec lights;
+
 static tfx_uniform proj_uniform;
 static tfx_uniform image_uniform;
 static tfx_uniform lumos_uniform;
@@ -49,6 +49,10 @@ static tfx_uniform lposition_uniform;
 static tfx_uniform lcolor_uniform;
 static tfx_uniform lamount_uniform;
 
+static tfx_program program;
+static tfx_program out_program;
+static tfx_program quad_program;
+
 static Color clear_color = { .full = 0x000000FF };
 static Color ambient = { .full=0xFFFFFFFF };
 
@@ -60,8 +64,6 @@ static bool resize;
 
 static tfx_vertex_format vertex_format;
 static f32 view_matrix[16] = IDENTITY_MATRIX;
-
-static tfx_buffer flat_quad;
 
 u16 target_w, target_h;
 bool enable_fill;
@@ -104,6 +106,81 @@ void ren_videomode(u16 w, u16 h, bool fill) {
     SDL_SetWindowMinimumSize(window, w, h);
     resize = true;
 }
+
+#define TEXTURE_AMOUNT 128
+static tfx_texture textures[TEXTURE_AMOUNT];
+static tfx_texture texture_none;
+tfx_texture texture_main;
+tfx_texture texture_lumos;
+
+u8 ren_tex_load_mem(const char *data, u32 length) {
+    Texture tex = tex_load(data, length);
+    u8 id = ren_tex_load(tex);
+    tex_free(tex);
+
+    return id;
+}
+
+u8 ren_tex_load(Texture img) {
+    for (int i = 0; i < TEXTURE_AMOUNT; i++) {
+        if (!textures[i].gl_count) {
+            textures[i] = tfx_texture_new(
+                img.w, img.h, 1, img.pixels, 
+                TFX_FORMAT_RGBA8, TFX_TEXTURE_FILTER_POINT
+            );
+            return i+1;
+        }
+    }
+
+    return 0;
+}
+
+bool ren_tex_free(u8 id) {
+    if (!id) return 1;
+
+    id -= 1;
+
+    if (!textures[id].gl_count)
+        return 1;
+
+    tfx_texture_free(&textures[id]);
+    textures[id].gl_count = 0;
+
+    return 0;
+}
+
+bool ren_tex_bind(u8 main, u8 lumos) {
+    texture_main = texture_none;
+    texture_lumos = texture_none;
+
+    if (main && textures[main-1].gl_count)
+        texture_main = textures[main-1];
+
+    if (lumos && textures[lumos-1].gl_count)
+        texture_lumos = textures[lumos-1];
+
+    return 0;
+}
+
+static tfx_program shader(const char *data, const char *attribs[]) {
+    // lazy
+    u32 final_length = strlen(data) + strlen(library_glsl) + 32;
+    char *final_source = malloc(final_length);
+
+    if (compat_mode) 
+        snprintf(final_source, final_length, "#define COMPAT_MODE 1\n%s\n%s\n", library_glsl, data);
+    else
+        snprintf(final_source, final_length, "%s\n%s\n", library_glsl, data);
+
+    tfx_program program = tfx_program_new (
+        final_source, 
+        final_source, 
+        attribs, -1
+    );
+
+    return program;
+}
+
 
 bool ren_init(SDL_Window *_window) {
     printf("setting up renderer.\n");
@@ -161,6 +238,23 @@ bool ren_init(SDL_Window *_window) {
 #endif
 
 	tfx_set_platform_data(pd);
+    tfx_reset(1, 1, 0);
+
+    Color transparent = {0, 0, 0, 0};
+    texture_none = tfx_texture_new(1, 1, 1, &transparent, TFX_FORMAT_RGBA8, 0);
+
+    ren_tex_bind(0, 0);
+    
+    const char *attribs[] = {
+        "vx_position",
+        "vx_uv",
+        "vx_color",
+        NULL
+    };
+
+    program      = shader(shader_glsl, attribs);
+    out_program  = shader(output_glsl, attribs);
+    quad_program = shader(quad_glsl,   attribs);
 
 	vertex_format = tfx_vertex_format_start();
 	tfx_vertex_format_add(&vertex_format, 0, 3, false, TFX_TYPE_FLOAT); // Position
@@ -282,33 +376,8 @@ void ren_size(u16 *w, u16 *h) {
     *h = (u16)ceilf((f32)target_h/scale);
 }
 
-static tfx_program shader(const char *data, const char *attribs[]) {
-    // lazy
-    u32 final_length = strlen(data) + strlen(library_glsl) + 32;
-    char *final_source = malloc(final_length);
-
-    if (compat_mode) 
-        snprintf(final_source, final_length, "#define COMPAT_MODE 1\n%s\n%s\n", library_glsl, data);
-    else
-        snprintf(final_source, final_length, "%s\n%s\n", library_glsl, data);
-
-    tfx_program program = tfx_program_new (
-        final_source, 
-        final_source, 
-        attribs, -1
-    );
-
-    return program;
-}
-
 int ren_frame() {
     static tfx_canvas canvas;
-    static tfx_program program;
-    static tfx_program out_program;
-    static tfx_program quad_program;
-    static tfx_texture atlas;
-    static tfx_texture lumos;
-    static tfx_texture font_texture;
     static Frustum frustum;
 
     static VertexVec scene_triangles;
@@ -357,7 +426,6 @@ int ren_frame() {
             TFX_TEXTURE_FILTER_POINT
         );
 
-
         tfx_set_uniform(&res_uniform, resolution, 1);
 
         f32 real_res[2] = { (f32)(width), (f32)(height) };
@@ -365,51 +433,6 @@ int ren_frame() {
 
         int pixelsize = scale;
         tfx_set_uniform_int(&scale_uniform, &pixelsize, 1);
-
-
-        if (!program) {
-            const char *attribs[] = {
-                "vx_position",
-                "vx_uv",
-                "vx_color",
-                NULL
-            };
-
-            program      = shader(shader_glsl, attribs);
-            out_program  = shader(output_glsl, attribs);
-            quad_program = shader(quad_glsl,   attribs);
-        }
-
-        if (!atlas.gl_count) {
-            u32 length = 0; 
-            {
-                const char *raw = fs_read("assets/tex_atlas.png", &length);
-                cp_image_t img = cp_load_png_mem(raw, length);
-                atlas = tfx_texture_new(img.w, img.h, 1, img.pix, TFX_FORMAT_RGBA8, TFX_TEXTURE_FILTER_POINT);
-                cp_free_png(&img);
-            }
-
-            {
-                const char *raw = fs_read("assets/tex_lumos.png", &length);
-                cp_image_t img = cp_load_png_mem(raw, length);
-                lumos = tfx_texture_new(img.w, img.h, 1, img.pix, TFX_FORMAT_RGBA8, TFX_TEXTURE_FILTER_POINT);
-                cp_free_png(&img);
-            }
-        }
-
-        if (!flat_quad.gl_id) {
-            Vertex quad[6] = {
-                {{ -1.0, -1.0, 0.0 }},
-                {{ -1.0,  1.0, 0.0 }},
-                {{  1.0, -1.0, 0.0 }},
-
-                {{  1.0,  1.0, 0.0 }},
-                {{  1.0, -1.0, 0.0 }},
-                {{ -1.0,  1.0, 0.0 }},
-            };
-
-            flat_quad = tfx_buffer_new(quad, sizeof(quad), &vertex_format, TFX_BUFFER_NONE);
-        }
 
         if (!scene_triangles.data)
             vec_init(&scene_triangles);
@@ -491,8 +514,8 @@ int ren_frame() {
         if (call.tint.a == 0) continue;
 
         if (call.texture.w == 0) {
-            call.texture.w = atlas.width;
-            call.texture.h = atlas.height;
+            call.texture.w = texture_main.width;
+            call.texture.h = texture_main.height;
         }
 
         mat4_mul(m, call.model, view_matrix);
@@ -507,8 +530,8 @@ int ren_frame() {
                 Vertex *copy = &tri.arr[b];
 
                 #define _CCM(a,b) (u8) (((unsigned)a * (unsigned)b + 255u) >> 8)
-                #define _CKW(a) ((f32)(a) / (f32)atlas.width)
-                #define _CKH(a) ((f32)(a) / (f32)atlas.height)
+                #define _CKW(a) ((f32)(a) / (f32)texture_main.width)
+                #define _CKH(a) ((f32)(a) / (f32)texture_main.height)
                 //#define _CCM(fc,oc) (fc)
 
                 copy->uv[0] = _CKW(call.texture.w) * vertex.uv[0] + _CKW(call.texture.x);
@@ -562,8 +585,8 @@ int ren_frame() {
     vec_clear(&logs);
 
     tfx_set_transient_buffer(buffer);
-    tfx_set_texture(&image_uniform, &atlas, 0);
-    tfx_set_texture(&lumos_uniform, &lumos, 1);
+    tfx_set_texture(&image_uniform, &texture_main, 0);
+    tfx_set_texture(&lumos_uniform, &texture_lumos, 1);
     tfx_submit(view, program, false);
     
 
@@ -572,7 +595,7 @@ int ren_frame() {
     tfx_set_state(TFX_STATE_RGB_WRITE);
     tfx_view_set_name(ui, "the quad pass");
     tfx_view_set_canvas(ui, &canvas, 0);
-    tfx_set_texture(&image_uniform, &atlas, 0);
+    tfx_set_texture(&image_uniform, &texture_main, 0);
     tfx_transient_buffer quad_buffer = tfx_transient_buffer_new(&vertex_format, quads.length*6);
 
     const f32 w = resolution[0] / 2.f;
@@ -585,10 +608,10 @@ int ren_frame() {
     for (u32 i = 0; i < quads.length; i++) {
         Quad q = quads.data[i];
 
-        const f32 tsx = (q.texture.x) / (f32)atlas.width;
-        const f32 tsy = (q.texture.y) / (f32)atlas.height;
-        const f32 tcx = (q.texture.x + q.texture.w) / (f32)atlas.width;
-        const f32 tcy = (q.texture.y + q.texture.h) / (f32)atlas.height;
+        const f32 tsx = (q.texture.x) / (f32)texture_main.width;
+        const f32 tsy = (q.texture.y) / (f32)texture_main.height;
+        const f32 tcx = (q.texture.x + q.texture.w) / (f32)texture_main.width;
+        const f32 tcy = (q.texture.y + q.texture.h) / (f32)texture_main.height;
 
         const f32 qsx = q.position[0];
         const f32 qsy = q.position[1];
@@ -624,9 +647,22 @@ int ren_frame() {
     tfx_set_state(TFX_STATE_RGB_WRITE);
     tfx_view_set_depth_test(post, TFX_DEPTH_TEST_NONE);
 	tfx_view_set_name(post, "the output pass");
+
+    tfx_transient_buffer flat_quad = tfx_transient_buffer_new(&vertex_format, 6);
+    Vertex quad[6] = {
+        {{ -1.0, -1.0, 0.0 }},
+        {{ -1.0,  1.0, 0.0 }},
+        {{  1.0, -1.0, 0.0 }},
+
+        {{  1.0,  1.0, 0.0 }},
+        {{  1.0, -1.0, 0.0 }},
+        {{ -1.0,  1.0, 0.0 }},
+    };
+    memcpy(flat_quad.data, quad, sizeof(quad));
+    tfx_set_transient_buffer(flat_quad);
+
     tfx_texture tex = tfx_get_texture(&canvas, 0);
     tfx_set_texture(&image_uniform, &tex, 0);
-    tfx_set_vertices(&flat_quad, 6);
     tfx_submit(post, out_program, false);
 
     tfx_frame();

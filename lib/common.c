@@ -1,6 +1,10 @@
 // we will only use PNGs on this current project.
-#define CUTE_PNG_IMPLEMENTATION
-#include "cute_png.h"
+#define STB_IMAGE_IMPLEMENTATION
+#define STBI_NO_STDIO
+#define STBI_NO_GIF
+#define STBI_NO_LINEAR
+#define STBI_NO_HDR
+#include "stb_image.h"
 
 // we need this for OGG files.
 // no STDIO because we will not read directly off disk
