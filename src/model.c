@@ -3,7 +3,7 @@
 // because I cant bother to make it generalized.
 
 #define BASKET_INTERNAL
-#include "common.h"
+#include "basket.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -311,16 +311,27 @@ bool bbm_load(Model *map, const char *data) {
 }
 
 
-Model mod_load(const char *data) {
-    Model map = (Model) { { 0, 0 }, {  }, 0 };
-
-    if (!iqm_load(&map, data)) {
-        return map;
+int mod_load(const char *data, Model *map) {
+    if (!iqm_load(map, data)) {
+        return 0;
     }
 
-    if (!bbm_load(&map, data)) {
-        return map;
+    if (!bbm_load(map, data)) {
+        return 0;
     }
 
-    return map;
+    return 1;
+}
+
+void mod_free(Model *model) {
+    if (model->mesh.data)
+        free(model->mesh.data);
+
+    if (model->mesh.animation)
+        free(model->mesh.animation);
+
+    model->mesh = (MeshSlice) { NULL, NULL, 0, {} };
+
+
+    // TODO: FREE ANIMATION
 }

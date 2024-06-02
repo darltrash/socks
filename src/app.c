@@ -2,9 +2,10 @@
 
 #include <stddef.h>
 #include <stdio.h>
+#include <stdlib.h>
 #define STB_VORBIS_INCLUDE_STB_VORBIS_H 1
 
-#include "common.h"
+#include "basket.h"
 #include "minilua.h"
 #include "cute_sound.h"
 #include "stb_perlin.h"
@@ -69,8 +70,14 @@ static int api_load_model() {
         luaL_error(l, "file doesnt exist, this one -> \"%s\"", file);
         return 0;
     }
-        
-    Model model = mod_load(str);
+
+    Model model;
+
+    if (mod_load(str, &model)) {
+        luaL_error(l, "could not load!");
+        return 0;
+    }
+
 
     // TODO: Transform to a special metatype
     lua_newtable(l);
@@ -586,7 +593,7 @@ static const luaL_Reg registry[] = {
 };
 
 
-bool init(void *userdata) {
+int init(void *userdata) {
     luaL_loadstring(l, fs_read("boot.lua", NULL));
     lua_call(l, 0, 0);
 
@@ -594,20 +601,24 @@ bool init(void *userdata) {
     u8 main, lumos;
     {
         const char *raw = fs_read("assets/tex_atlas.png", &length);
-        main = ren_tex_load_mem(raw, length);
+        main = ren_tex_load(raw, length);
     }
 
     {
         const char *raw = fs_read("assets/tex_lumos.png", &length);
-        lumos = ren_tex_load_mem(raw, length);
+        lumos = ren_tex_load(raw, length);
     }
 
     ren_tex_bind(main, lumos);
 
+#ifdef TRASH_DEBUG
+    eng_set_debug(true);
+#endif
+
     return false;
 }
 
-bool tick(f64 timestep) {
+int tick(f64 timestep) {
     lua_getglobal(l, "eng");
     lua_getfield(l, -1, "tick");
 
@@ -620,7 +631,7 @@ bool tick(f64 timestep) {
     return result != LUA_OK;
 }
 
-bool frame(f64 alpha, f64 delta, bool focused) {
+int frame(f64 alpha, f64 delta) {
     ren_log("\n// ENVIRONMENT //////");
 
     //lua_gc(l, LUA_GCCOLLECT, 0);
@@ -633,7 +644,7 @@ bool frame(f64 alpha, f64 delta, bool focused) {
 
     lua_pushnumber(l, alpha);
     lua_pushnumber(l, delta);
-    lua_pushboolean(l, focused);
+    lua_pushboolean(l, eng_is_focused());
 
     int result = lua_pcall(l, 3, 0, 0);
 
@@ -693,7 +704,7 @@ int main(int argc, char *argv[]) {
 
     lua_setglobal(l, "eng");
 
-    int o = eng_main(app, NULL);
+    int o = eng_main(app);
 
     if (l)
         lua_close(l);

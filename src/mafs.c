@@ -1,7 +1,7 @@
 // common math, simple 'nuff.
 
 #define BASKET_INTERNAL
-#include "common.h"
+#include "basket.h"
 #include <string.h>
 #include <math.h>
 

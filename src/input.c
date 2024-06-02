@@ -3,7 +3,7 @@
 #include <stdio.h>
 
 #define BASKET_INTERNAL
-#include "common.h"
+#include "basket.h"
 #include "vec.h"
 
 #include <SDL2/SDL_events.h>

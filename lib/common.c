@@ -18,6 +18,9 @@
 #define CUTE_SOUND_IMPLEMENTATION
 #define CUTE_SOUND_FORCE_SDL
 #define CUTE_SOUND_SDL_H <SDL2/SDL.h>
+#ifndef __SSE__
+#define CUTE_SOUND_SCALAR_MODE 1
+#endif
 #include "cute_sound.h"
 
 #define STB_PERLIN_IMPLEMENTATION

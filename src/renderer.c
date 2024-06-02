@@ -12,7 +12,7 @@
 #include <math.h>
 
 #define BASKET_INTERNAL
-#include "common.h"
+#include "basket.h"
 #include "vec.h"
 #include "tinyfx.h"
 
@@ -61,6 +61,7 @@ static int snapping = 0;
 static bool dithering = true;
 static bool compat_mode = true;
 static bool resize; 
+static bool was_debug = false;
 
 static tfx_vertex_format vertex_format;
 static f32 view_matrix[16] = IDENTITY_MATRIX;
@@ -72,6 +73,9 @@ f32 scale = 1.0;
 SDL_Window *window;
 
 static void tfx_debug_thingy(const char *str, tfx_severity severity) {
+    if (!eng_is_debug()) 
+        return;
+
     printf("tfx ");
     
     switch (severity) {
@@ -113,15 +117,18 @@ static tfx_texture texture_none;
 tfx_texture texture_main;
 tfx_texture texture_lumos;
 
-u8 ren_tex_load_mem(const char *data, u32 length) {
-    Texture tex = tex_load(data, length);
-    u8 id = ren_tex_load(tex);
-    tex_free(tex);
+u8 ren_tex_load(const char *data, u32 length) {
+    Image tex;
+    if (img_load(data, length, &tex))
+        return 0;
+
+    u8 id = ren_tex_load_custom(tex);
+    img_free(&tex);
 
     return id;
 }
 
-u8 ren_tex_load(Texture img) {
+u8 ren_tex_load_custom(Image img) {
     for (int i = 0; i < TEXTURE_AMOUNT; i++) {
         if (!textures[i].gl_count) {
             textures[i] = tfx_texture_new(
@@ -135,21 +142,19 @@ u8 ren_tex_load(Texture img) {
     return 0;
 }
 
-bool ren_tex_free(u8 id) {
-    if (!id) return 1;
+void ren_tex_free(u8 id) {
+    if (!id) return;
 
     id -= 1;
 
     if (!textures[id].gl_count)
-        return 1;
+        return;
 
     tfx_texture_free(&textures[id]);
     textures[id].gl_count = 0;
-
-    return 0;
 }
 
-bool ren_tex_bind(u8 main, u8 lumos) {
+void ren_tex_bind(u8 main, u8 lumos) {
     texture_main = texture_none;
     texture_lumos = texture_none;
 
@@ -158,8 +163,6 @@ bool ren_tex_bind(u8 main, u8 lumos) {
 
     if (lumos && textures[lumos-1].gl_count)
         texture_lumos = textures[lumos-1];
-
-    return 0;
 }
 
 static tfx_program shader(const char *data, const char *attribs[]) {
@@ -233,9 +236,7 @@ bool ren_init(SDL_Window *_window) {
 	pd.use_gles = compat_mode;
 	pd.context_version = version;
 	pd.gl_get_proc_address = SDL_GL_GetProcAddress;
-#ifdef TRASH_DEBUG
     pd.info_log = tfx_debug_thingy;
-#endif
 
 	tfx_set_platform_data(pd);
     tfx_reset(1, 1, 0);
@@ -333,11 +334,14 @@ void ren_rect(i32 x, i32 y, u32 w, u32 h, Color color) {
 }
 
 void ren_log(const char *str, ...) {
-    static char buffer[128];
+    if (!eng_is_debug()) 
+        return;
+
+    static char buffer[256];
 
     va_list argptr;
     va_start(argptr, str);
-    vsnprintf(buffer, 128, str, argptr);
+    vsnprintf(buffer, 256, str, argptr);
     va_end(argptr);
 
     u32 len = strlen(buffer);
@@ -390,20 +394,27 @@ int ren_frame() {
     if (curr_width != width || curr_height != height)
         resize = true;
 
+    bool is_debug = eng_is_debug();
+    if (is_debug != was_debug) {
+        resize = true;
+
+        was_debug = is_debug;
+    }
+
     if (resize) {
+        resize = false;
+
         width = curr_width;
         height = curr_height;
 
-        resize = false;
-
         tfx_reset_flags flags = TFX_RESET_NONE;
 
-#ifdef TRASH_DEBUG
-        flags = 0
-            | TFX_RESET_DEBUG_OVERLAY 
-            | TFX_RESET_DEBUG_OVERLAY_STATS
-            | TFX_RESET_REPORT_GPU_TIMINGS;
-#endif
+        if (eng_is_debug()) {
+            flags = 0
+                | TFX_RESET_DEBUG_OVERLAY 
+                | TFX_RESET_DEBUG_OVERLAY_STATS
+                | TFX_RESET_REPORT_GPU_TIMINGS;
+        }
 
         tfx_reset(width, height, flags);
 
@@ -563,8 +574,6 @@ int ren_frame() {
 
     vec_clear(&scene_triangles);
 
-    static char tmp_str[128];
-
     ren_log("\n// RENDERER //////");
     ren_log("TRIANGLES:  %i", t_amount);
     ren_log("RESOLUTION: %ix%i", width, height);
@@ -581,6 +590,7 @@ int ren_frame() {
     vec_push(&logs, 0);
 
     tfx_debug_print(8, 0, 9, 5, logs.data);
+
 
     vec_clear(&logs);
 

@@ -543,10 +543,6 @@ void cs_set_global_user_allocator_context(void* user_allocator_context);
 
 #endif
 
-#ifndef __SSE__
-#define CUTE_SOUND_SCALAR_MODE
-#endif
-
 #ifdef CUTE_SOUND_SCALAR_MODE
 
 	#include <limits.h>

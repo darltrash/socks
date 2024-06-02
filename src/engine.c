@@ -9,7 +9,7 @@
 #include <SDL2/SDL_video.h>
 
 #define BASKET_INTERNAL
-#include "common.h"
+#include "basket.h"
 #include "cute_sound.h"
 
 static f64 timestep;
@@ -24,6 +24,7 @@ static u16 window_height = 630;
 static u16 mouse_x = 0;
 static u16 mouse_y = 0;
 static bool mouse_button[3];
+static bool is_debug = false;
 
 void event(SDL_Event event, SDL_Window *window) {
     static bool fullscreen = false;
@@ -117,8 +118,28 @@ void eng_tickrate(f64 hz) {
     timestep = 1.0/hz;
 }
 
+bool eng_is_focused() {
+    return focused;
+}
 
-bool eng_main(Application app, void *userdata) {
+void eng_set_debug(bool debug) {
+    is_debug = debug;
+}
+
+bool eng_is_debug() {
+    return is_debug;
+}
+
+#define ENG_CALL_IF_VALID(func, ...) {  \
+    int ret = 0;                        \
+    if (func)                           \
+        ret = func(__VA_ARGS__);        \
+                                        \
+    if (ret)                            \
+        return ret;                     \
+}
+
+bool eng_main(Application app) {
     printf("waste basket, keep my brain entertained.\n");
 
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
@@ -185,9 +206,7 @@ bool eng_main(Application app, void *userdata) {
 
     eng_tickrate(30);
 
-    if (app.init(userdata))
-        return 1;
-
+    ENG_CALL_IF_VALID(app.init)
     lag = timestep;
 
     running = true;
@@ -211,14 +230,13 @@ bool eng_main(Application app, void *userdata) {
             delta += deltas[i];
         delta /= (f64)delta_len;
 
-
         if (instant) {
             SDL_Event ev;
             while (SDL_PollEvent(&ev))
                 event(ev, window);
 
             if (focused)
-                app.tick(timestep);
+                ENG_CALL_IF_VALID(app.tick, timestep)
 
             inp_update(timestep);
 
@@ -235,7 +253,7 @@ bool eng_main(Application app, void *userdata) {
                     event(ev, window);
 
                 if (focused)
-                    app.tick(timestep);
+                    ENG_CALL_IF_VALID(app.tick, timestep)
 
                 inp_update(timestep);
 
@@ -249,9 +267,8 @@ bool eng_main(Application app, void *userdata) {
 
         }
 
-        if (app.frame(lag / timestep, delta, focused))
-            return 1;
-
+        ENG_CALL_IF_VALID(app.frame, lag / timestep, delta)
+        
         if (!focused) {
             u16 w, h; 
             ren_size(&w, &h);
