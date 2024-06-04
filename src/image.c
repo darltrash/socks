@@ -1,13 +1,14 @@
 #include "basket.h"
 #include "stb_image.h"
 
-int img_load(const char *data, u32 length, Image *texture) {
+bool img_init(Image *texture, const char *data, u32 length) {
     int w, h, c;
 
     // TODO: HANDLE OTHER CASES(? :O
     texture->pixels = (Color *)stbi_load_from_memory (
         (const stbi_uc *)data, length, &w, &h, &c, 4
     );
+    
     texture->w = w;
     texture->h = h;
 

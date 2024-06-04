@@ -17,6 +17,7 @@
 // no matter what platform, and keeps things consistent.
 #define CUTE_SOUND_IMPLEMENTATION
 #define CUTE_SOUND_FORCE_SDL
+#define CUTE_SOUND_PLATFORM CUTE_SOUND_SDL
 #define CUTE_SOUND_SDL_H <SDL2/SDL.h>
 #ifndef __SSE__
 #define CUTE_SOUND_SCALAR_MODE 1

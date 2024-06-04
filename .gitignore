@@ -7,4 +7,6 @@ thing.js
 thing.wasm
 out/
 raw/*.blend*
+!raw/*.blend
 raw/*.exm
+package.bsk

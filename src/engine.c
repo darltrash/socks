@@ -139,14 +139,10 @@ bool eng_is_debug() {
         return ret;                     \
 }
 
-bool eng_main(Application app) {
+bool eng_main(Application app, const char *arg0) {
     printf("waste basket, keep my brain entertained.\n");
 
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
-
-    assert(app.init);
-    assert(app.tick);
-    assert(app.frame);
 
   	SDL_Window *window = SDL_CreateWindow(
         "socks",
@@ -155,6 +151,10 @@ bool eng_main(Application app) {
   	    window_width, window_height,
   	    SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE
   	);
+
+    // filesystem.
+    if (fs_init(arg0))
+        return 1;
 
     // renderer.
     if (ren_init(window))

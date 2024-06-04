@@ -64,6 +64,7 @@ typedef int8_t  i8;
 
 // FILESYSTEM.C /////////////////////////////////////////////////
     const char *fs_read(const char *name, u32 *length);
+
     int sav_identity(const char *identity);
     int sav_store(const char *data, u32 length);
     char *sav_retrieve(u32 *length);
@@ -130,7 +131,7 @@ typedef int8_t  i8;
         char *extra;
     } Model;
 
-    int mod_load(const char *data, Model *map);
+    bool mod_init(Model *map, const char *data);
     void mod_free(Model *model);
 
 
@@ -162,7 +163,7 @@ typedef int8_t  i8;
         u16 w, h;
     } Image;
 
-    int img_load(const char *data, u32 length, Image *texture);
+    bool img_init(Image *texture, const char *data, u32 length);
     void img_free(Image *texture);
 
 
@@ -285,6 +286,7 @@ typedef int8_t  i8;
     const char *inp_text();
     void inp_clear();
     u32 inp_button(u8 button);
+    
     bool inp_register_scancode(const char *scancode, u8 button);
     bool inp_register_keycode(const char *keycode, u8);
     const char *inp_get_key(u8 button);
@@ -304,12 +306,14 @@ typedef int8_t  i8;
         int (*close) (void);
     } Application; 
 
-    bool eng_main(Application app);
-    void eng_tickrate(f64 hz);
+    bool eng_main(Application app, const char *arg0);
     void eng_close(); // Will close at the end of the frame
+    void eng_tickrate(f64 hz);
+
     void eng_window_size(u16 *w, u16 *h); // TODO: This shit is not future proof.
     void eng_mouse_position(u16 *x, u16 *y);
+    bool eng_mouse_down(u8 button);
+
     bool eng_is_focused();
     void eng_set_debug(bool debug);
     bool eng_is_debug();
-    bool eng_mouse_down(u8 button);

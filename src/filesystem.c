@@ -4,6 +4,30 @@
 #include "basket.h"
 #include <stdio.h>
 
+#ifdef _WIN32
+    #include <windows.h>
+    #define PATH_SEPARATOR '\\'
+    #define chdir(path) (!SetCurrentDirectory(path))
+#else
+    #define PATH_SEPARATOR '/'
+    #include <unistd.h>
+#endif
+
+int chdir_to_path(const char *exec_path) {
+    char path[1024];
+    strncpy(path, exec_path, sizeof(path) - 1);
+    path[sizeof(path) - 1] = '\0';
+
+    char *last_slash = strrchr(path, PATH_SEPARATOR);
+
+    if (last_slash == NULL)
+        return 1;
+
+    *last_slash = '\0';
+
+    return chdir(path);
+}
+
 #ifdef FS_NAIVE_FILES
     #include <stdlib.h>
 
@@ -11,10 +35,7 @@
     const char *fs_read(const char *name, u32 *size) {
         printf("reading file %s\n", name);
 
-        char real_filepath[50] = "package/";
-        strcat(real_filepath, name);
-
-        FILE *f = fopen(real_filepath, "rb");
+        FILE *f = fopen(name, "rb");
         if (!f)
             return 0;
 
@@ -34,7 +55,16 @@
         return string;
     }
 
-#else
+    int fs_init(const char *self) {
+        if (chdir_to_path(self))
+            return 1;
+
+        chdir("package");
+        
+        return 0;
+    }
+
+#elif FS_STATIC_FILES
     #include "static.h"
 
     const char *fs_read(const char *name, u32 *size) {
@@ -53,6 +83,47 @@
 
         return 0;
     }
+
+    int fs_init(const char *self) {
+        return 0;
+    }
+
+#else
+    #include "zip.h"
+
+    struct zip_t *zip;
+
+    int fs_init(const char *self) {
+        if (chdir_to_path(self))
+            return 1;
+
+        zip = zip_open("package.bsk", 0, 'r');
+        if (!zip)
+            return 1;
+        
+        return 0;
+    }
+
+    const char *fs_read(const char *name, u32 *size) {
+        char *buffer = NULL;
+        size_t length;
+
+        zip_entry_open(zip, name);
+
+        int ret = zip_entry_read(zip, (void**)(&buffer), &length);
+
+        zip_entry_close(zip);
+
+        if (ret < 0)
+            return NULL;
+
+
+        if (size != NULL)
+            *size = length;
+
+        return buffer;
+    }
+
 #endif
 
 

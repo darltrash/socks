@@ -60,15 +60,15 @@ static f32 far = 15.0;
 static int snapping = 0;
 static bool dithering = true;
 static bool compat_mode = true;
-static bool resize; 
 static bool was_debug = false;
+static bool resize; 
 
 static tfx_vertex_format vertex_format;
 static f32 view_matrix[16] = IDENTITY_MATRIX;
 
-u16 target_w, target_h;
-bool enable_fill;
-f32 scale = 1.0;
+static u16 target_w, target_h;
+static bool enable_fill;
+static f32 scale = 1.0;
 
 SDL_Window *window;
 
@@ -104,22 +104,23 @@ static void tfx_debug_thingy(const char *str, tfx_severity severity) {
 }
 
 void ren_videomode(u16 w, u16 h, bool fill) {
+    enable_fill = fill;
     target_w = w;
     target_h = h;
-    enable_fill = fill;
-    SDL_SetWindowMinimumSize(window, w, h);
     resize = true;
+
+    SDL_SetWindowMinimumSize(window, w, h);
 }
 
 #define TEXTURE_AMOUNT 128
 static tfx_texture textures[TEXTURE_AMOUNT];
 static tfx_texture texture_none;
-tfx_texture texture_main;
-tfx_texture texture_lumos;
+static tfx_texture texture_main;
+static tfx_texture texture_lumos;
 
 u8 ren_tex_load(const char *data, u32 length) {
     Image tex;
-    if (img_load(data, length, &tex))
+    if (img_init(&tex, data, length))
         return 0;
 
     u8 id = ren_tex_load_custom(tex);
@@ -615,13 +616,16 @@ int ren_frame() {
 
     Vertex *quad_vertices = quad_buffer.data;
 
+    const f32 tex_w = (f32)texture_main.width;
+    const f32 tex_h = (f32)texture_main.height;
+
     for (u32 i = 0; i < quads.length; i++) {
         Quad q = quads.data[i];
 
-        const f32 tsx = (q.texture.x) / (f32)texture_main.width;
-        const f32 tsy = (q.texture.y) / (f32)texture_main.height;
-        const f32 tcx = (q.texture.x + q.texture.w) / (f32)texture_main.width;
-        const f32 tcy = (q.texture.y + q.texture.h) / (f32)texture_main.height;
+        const f32 tsx = (q.texture.x) / tex_w;
+        const f32 tsy = (q.texture.y) / tex_h;
+        const f32 tcx = (q.texture.x + q.texture.w) / tex_w;
+        const f32 tcy = (q.texture.y + q.texture.h) / tex_h;
 
         const f32 qsx = q.position[0];
         const f32 qsy = q.position[1];
@@ -659,7 +663,7 @@ int ren_frame() {
 	tfx_view_set_name(post, "the output pass");
 
     tfx_transient_buffer flat_quad = tfx_transient_buffer_new(&vertex_format, 6);
-    Vertex quad[6] = {
+    const Vertex quad[6] = {
         {{ -1.0, -1.0, 0.0 }},
         {{ -1.0,  1.0, 0.0 }},
         {{  1.0, -1.0, 0.0 }},

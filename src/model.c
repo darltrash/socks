@@ -83,7 +83,7 @@ typedef struct {
   unsigned int flags;
 } IQMAnim;
 
-bool iqm_load(Model *map, const char *data) {
+bool iqm_init(Model *map, const char *data) {
     IQMHeader header = *(IQMHeader *)data;
 
     // Check data
@@ -291,10 +291,10 @@ typedef struct {
     u32 extra_offset;
 } BasketModelHeader;
 
-bool bbm_load(Model *map, const char *data) {
+bool bbm_init(Model *map, const char *data) {
     BasketModelHeader header = *(BasketModelHeader*)(data);
 
-    if (strcmp(header.magic, "BASKETMODELv0.1")) {
+    if (strcmp(header.magic, BBM_MAGIC)) {
         return true;
     }
 
@@ -311,12 +311,12 @@ bool bbm_load(Model *map, const char *data) {
 }
 
 
-int mod_load(const char *data, Model *map) {
-    if (!iqm_load(map, data)) {
+bool mod_init(Model *map, const char *data) {
+    if (!iqm_init(map, data)) {
         return 0;
     }
 
-    if (!bbm_load(map, data)) {
+    if (!bbm_init(map, data)) {
         return 0;
     }
 
@@ -331,7 +331,6 @@ void mod_free(Model *model) {
         free(model->mesh.animation);
 
     model->mesh = (MeshSlice) { NULL, NULL, 0, {} };
-
 
     // TODO: FREE ANIMATION
 }

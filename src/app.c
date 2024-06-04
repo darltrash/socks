@@ -73,7 +73,7 @@ static int api_load_model() {
 
     Model model;
 
-    if (mod_load(str, &model)) {
+    if (mod_init(&model, str)) {
         luaL_error(l, "could not load!");
         return 0;
     }
@@ -704,7 +704,7 @@ int main(int argc, char *argv[]) {
 
     lua_setglobal(l, "eng");
 
-    int o = eng_main(app);
+    int o = eng_main(app, argv[0]);
 
     if (l)
         lua_close(l);
