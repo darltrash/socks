@@ -1,5 +1,31 @@
 # BASKET
 
+<!-- TOC -->
+- [GENERAL](#general)
+    - [`Color`](#color)
+        - [Example](#example)
+- [FILESYSTEM.C](#filesystemc)
+    - [`const char *fs_read(const char *name, u32 *length)`](#const-char-fs_readconst-char-name-u32-length)
+        - [Example](#example)
+    - [`int sav_identity(const char *identity)`](#int-sav_identityconst-char-identity)
+    - [`int sav_store(const char *data, u32 length)`](#int-sav_storeconst-char-data-u32-length)
+    - [`char *sav_retrieve(u32 *length)`](#char-sav_retrieveu32-length)
+- [ENGINE.C](#enginec)
+    - [`Application`](#application)
+    - [`bool eng_main(Application app, const char *arg0)`](#bool-eng_mainapplication-app-const-char-arg0)
+    - [`void eng_close()`](#void-eng_close)
+    - [`void eng_tickrate(f64 hz)`](#void-eng_tickratef64-hz)
+    - [`void eng_window_size(u16 *w, u16 *h)`](#void-eng_window_sizeu16-w-u16-h)
+    - [`void eng_mouse_position(u16 *x, u16 *y)`](#void-eng_mouse_positionu16-x-u16-y)
+    - [`bool eng_mouse_down(u8 button)`](#bool-eng_mouse_downu8-button)
+    - [`bool eng_is_focused()`](#bool-eng_is_focused)
+    - [`void eng_set_debug(bool debug)`](#void-eng_set_debugbool-debug)
+    - [`bool eng_is_debug()`](#bool-eng_is_debug)
+- [Debug Mode](#debug-mode)
+<!-- /TOC -->
+
+
+## GENERAL
 ### `Color`
 An union encoding color as 4 `u8` values (0 to 255) for `RGBA` color.
 
@@ -30,7 +56,7 @@ Sets the `u32` passed by pointer as `length` to the length of the file in bytes,
 
 Returns `NULL` if it was unable to find/read the file.
 
-#### Example
+**Example:**
 ```c
 const char hello_world = fs_read("hello_world.txt", NULL);
 printf("hello_world.txt: %s\n", hello_world);
@@ -320,7 +346,7 @@ Zero is okay, non-zero is error.
 > 
 
 
-#### Example:
+**Example:**
 ```c
 static int tick(f64 tickrate) {
     printf("Hello world!\n");
@@ -354,7 +380,7 @@ Sets two `u16` integers to the width and height of the window respectively.
 
 If any pointer is `NULL`, it will be ignored.
 
-#### Example:
+**Example:**
 ```c
 u16 width, height;
 eng_window_size(&width, &height);
@@ -370,7 +396,7 @@ Sets two `u16` integers to the X and Y of the cursor respectively.
 
 If any pointer is `NULL`, it will be ignored.
 
-#### Example:
+**Example:**
 ```c
 u16 mx, my;
 eng_mouse_position(&mx, &my);
