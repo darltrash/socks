@@ -55,7 +55,8 @@ Sets the identity of the game, will try to create a folder in the following path
 ### `int sav_store(const char *data, u32 length)`
 Stores `data` of `length` size into the game's savefile, returns non-zero if failed.
 
-> [!IMPORTANT] Remember to set the identity with [`sav_identity()`](#int-sav_identityconst-char-identity)
+> [!IMPORTANT] 
+> Remember to set the identity with [`sav_identity()`](#int-sav_identityconst-char-identity)
 
 <br>
 
@@ -307,7 +308,8 @@ typedef struct {
 - `tick(f64 timestep)`: Will be called every N hertz (or `timestep` seconds), defined by [`eng_tickrate()`](#void-eng_tickratef64-hz), default is 30hz
 - `close()`: Executes once the Application quits, either by [`eng_close()`](#void-eng_close) or by an error return value on any of the callbacks (except itself, of course).
 
-> [!IMPORTANT] Event polling happens at the same timestep as tick() is run, so don't go too nuts on it or else events will be VERY delayed. 
+> [!IMPORTANT] 
+> Event polling happens at the same timestep as tick() is run, so don't go too nuts on it or else events will be VERY delayed. 
 
 <br>
 
