@@ -290,7 +290,8 @@ local function cleanup()
     print("\n!! cleaning up this ugly garbage !!")
 
     os.execute("rm -f src/static.h")
-    os.execute("rm -f thing thing.exe")
+    os.execute("rm -f thing thing.*")
+    os.execute("rm -rf package.bsk")
     os.execute("rm -rf out")
 end
 

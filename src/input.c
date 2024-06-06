@@ -71,7 +71,7 @@ void inp_event(SDL_Event event) {
     }
 }
 
-bool inp_update(f64 delta) {
+bool inp_update(f64 timestep) {
     memset(text, 0, 32);
     
     for (u32 i = 0; i < INP_MAX; i++)

@@ -147,7 +147,7 @@ local state = {
         end
     
         return ent
-    end,    
+    end,
     
     tick = function (self, timestep)
         local t = eng.text()
@@ -500,6 +500,10 @@ local state = {
         eng.quad({416, 0, 16*6, 16*6}, -16*3, -16*3, {255, 255, 255, self.scrunge})
 
         self.scrunge = math.max(0, self.scrunge - delta * 300)
+
+        local x, y = eng.mouse_position()
+
+        eng.rect(x-4, y-4, 8, 8, 0xFF0000FF)
     end
 }
 

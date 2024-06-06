@@ -47,6 +47,16 @@ static int api_fs_read() {
     return 1;
 }
 
+static int api_videomode() {
+    ren_videomode(
+        luaL_checknumber(l, 1), 
+        luaL_checknumber(l, 2), 
+        lua_toboolean(l, 3)
+    );
+    
+    return 0;
+}
+
 // eng.camera(from, to)
 static int api_camera() {
     f32 a[3];
@@ -356,6 +366,16 @@ static int api_mouse_down() {
 }
 
 static int api_mouse_position() {
+    i16 x, y;
+    ren_mouse_position(&x, &y);
+
+    lua_pushinteger(l, x);
+    lua_pushinteger(l, y);
+
+    return 2;
+}
+
+static int api_raw_mouse_position() {
     u16 x, y;
     eng_mouse_position(&x, &y);
 
@@ -550,6 +570,8 @@ static int api_exit() {
 
 static const luaL_Reg registry[] = {
     { "read",       api_fs_read    },
+
+    { "videomode",  api_videomode  },
     { "camera",     api_camera     },
     { "load_model", api_load_model },
     { "render",     api_render     },
@@ -564,10 +586,11 @@ static const luaL_Reg registry[] = {
     { "text",       api_text       },
     { "log",        api_log        },
 
-    { "mouse_down",     api_mouse_down     },
-    { "mouse_position", api_mouse_position },
-    { "window_size",    api_window_size    },
-    { "size",           api_size           },
+    { "mouse_down",         api_mouse_down         },
+    { "mouse_position",     api_mouse_position     },
+    { "raw_mouse_position", api_raw_mouse_position },
+    { "window_size",        api_window_size        },
+    { "size",               api_size               },
 
     { "load_sound",       api_load_sound       },
     { "music_volume",     api_music_volume     },

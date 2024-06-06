@@ -44,6 +44,8 @@ local function on_error(err)
 
     eng.music_stop()
 
+    eng.videomode(400, 300)
+
     eng.tick = noop
     eng.frame = function ()
         eng.far(0, 0x00000000)
@@ -79,10 +81,6 @@ eng.set_room = function (new_room, ...)
     return room
 end
 
-
--- try to load the game 
-xpcall(require, on_error, "game")
-
 -- actual callback bs, all protected
 eng.tick = function (timestep)
     if not room.tick then return end
@@ -107,3 +105,6 @@ eng.frame = function (alpha, delta, focused)
 end
 
 eng.timer = 0
+
+-- try to load the game 
+xpcall(require, on_error, "game")

@@ -28,43 +28,8 @@ int chdir_to_path(const char *exec_path) {
     return chdir(path);
 }
 
-#ifdef FS_NAIVE_FILES
-    #include <stdlib.h>
 
-    // This code is bound to leak:
-    const char *fs_read(const char *name, u32 *size) {
-        printf("reading file %s\n", name);
-
-        FILE *f = fopen(name, "rb");
-        if (!f)
-            return 0;
-
-        fseek(f, 0, SEEK_END);
-        long fsize = ftell(f);
-        fseek(f, 0, SEEK_SET);
-
-        if (size)
-            *size = (u32)fsize;
-
-        char *string = malloc(fsize + 1);
-        fread(string, fsize, 1, f);
-        fclose(f);
-
-        string[fsize] = 0;
-
-        return string;
-    }
-
-    int fs_init(const char *self) {
-        if (chdir_to_path(self))
-            return 1;
-
-        chdir("package");
-        
-        return 0;
-    }
-
-#elif FS_STATIC_FILES
+#ifdef FS_STATIC_FILES
     #include "static.h"
 
     const char *fs_read(const char *name, u32 *size) {
@@ -97,14 +62,17 @@ int chdir_to_path(const char *exec_path) {
         if (chdir_to_path(self))
             return 1;
 
+        if (chdir("package"))
+            return 0;
+
         zip = zip_open("package.bsk", 0, 'r');
-        if (!zip)
-            return 1;
-        
-        return 0;
+        if (zip) 
+            return 0;
+
+        return 1;
     }
 
-    const char *fs_read(const char *name, u32 *size) {
+    static const char *fs_read_zip(const char *name, u32 *size) {
         char *buffer = NULL;
         size_t length;
 
@@ -117,11 +85,40 @@ int chdir_to_path(const char *exec_path) {
         if (ret < 0)
             return NULL;
 
-
         if (size != NULL)
             *size = length;
 
         return buffer;
+    }
+
+    static const char *fs_read_folder(const char *name, u32 *size) {
+        printf("reading file %s\n", name);
+
+        FILE *f = fopen(name, "rb");
+        if (!f)
+            return 0;
+
+        fseek(f, 0, SEEK_END);
+        long fsize = ftell(f);
+        fseek(f, 0, SEEK_SET);
+
+        if (size)
+            *size = (u32)fsize;
+
+        char *string = malloc(fsize + 1);
+        fread(string, fsize, 1, f);
+        fclose(f);
+
+        string[fsize] = 0;
+
+        return string;
+    }
+
+    const char *fs_read(const char *name, u32 *size) {
+        if (zip)
+            return fs_read_zip(name, size);
+
+        return fs_read_folder(name, size);
     }
 
 #endif

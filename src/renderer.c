@@ -103,8 +103,8 @@ static void tfx_debug_thingy(const char *str, tfx_severity severity) {
     printf("%s\n", str);
 }
 
-void ren_videomode(u16 w, u16 h, bool fill) {
-    enable_fill = fill;
+void ren_videomode(u16 w, u16 h, bool force_ratio) {
+    enable_fill = !force_ratio;
     target_w = w;
     target_h = h;
     resize = true;
@@ -203,7 +203,7 @@ bool ren_init(SDL_Window *_window) {
 	SDL_GLContext *context = SDL_GL_CreateContext(window);
 	SDL_GL_MakeCurrent(window, context);
 
-    ren_videomode(350, 350, true);
+    ren_videomode(400, 300, false);
 
     // setup opengl bullshit
     SDL_GL_SetAttribute(SDL_GL_RED_SIZE,   8);
@@ -372,13 +372,35 @@ static f32 resolution[2];
 
 void ren_size(u16 *w, u16 *h) {
     if (enable_fill) {
-        *w = (u16)ceilf((f32)width /scale);
-        *h = (u16)ceilf((f32)height/scale);
+        if (w != NULL)
+            *w = (u16)ceilf((f32)width /scale);
+
+        if (h != NULL)
+            *h = (u16)ceilf((f32)height/scale);
         return;
     }
 
-    *w = (u16)ceilf((f32)target_w/scale);
-    *h = (u16)ceilf((f32)target_h/scale);
+    if (w != NULL)
+        *w = (u16)ceilf((f32)target_w/scale);
+
+    if (h != NULL)
+        *h = (u16)ceilf((f32)target_h/scale);
+}
+
+void ren_mouse_position(i16 *x, i16 *y) {
+    u16 _x, _y;
+    eng_mouse_position(&_x, &_y);
+
+    u16 w, h;
+    eng_window_size(&w, &h);
+
+    if (x != NULL)
+        *x = (_x - ((f32)(w)/2)) / scale;
+
+    if (y != NULL)
+        *y = (_y - ((f32)(h)/2)) / scale;
+
+    // TODO: ADD NON_FILL MODE
 }
 
 int ren_frame() {
@@ -532,8 +554,6 @@ int ren_frame() {
 
         mat4_mul(m, call.model, view_matrix);
 
-        //printf("sexo? %i\n", call.mesh.length);
-
         for (u32 a = 0; a < call.mesh.length; a+=3) {
             Triangle tri;
 
@@ -544,7 +564,6 @@ int ren_frame() {
                 #define _CCM(a,b) (u8) (((unsigned)a * (unsigned)b + 255u) >> 8)
                 #define _CKW(a) ((f32)(a) / (f32)texture_main.width)
                 #define _CKH(a) ((f32)(a) / (f32)texture_main.height)
-                //#define _CCM(fc,oc) (fc)
 
                 copy->uv[0] = _CKW(call.texture.w) * vertex.uv[0] + _CKW(call.texture.x);
                 copy->uv[1] = _CKH(call.texture.h) * vertex.uv[1] + _CKH(call.texture.y);
@@ -555,8 +574,6 @@ int ren_frame() {
                 u8 fa = _CCM(call.tint.a, vertex.color.a);
 
                 copy->color = (Color) { fr, fg, fb, fa };
-
-                //printf("fa %i\n", fa);
 
                 mat4_mulvec(copy->position, vertex.position, m);
             }
@@ -612,12 +629,13 @@ int ren_frame() {
     const f32 w = resolution[0] / 2.f;
     const f32 h = resolution[1] / 2.f;
 
-    mat4_ortho(m, -w, w, -h, h, 0.01f, 100.f);
-
+    u32 ri = 0;
     Vertex *quad_vertices = quad_buffer.data;
 
     const f32 tex_w = (f32)texture_main.width;
     const f32 tex_h = (f32)texture_main.height;
+
+    // TODO: Fix wobbly boys
 
     for (u32 i = 0; i < quads.length; i++) {
         Quad q = quads.data[i];
@@ -632,22 +650,21 @@ int ren_frame() {
         const f32 qcx = q.position[0] + (q.texture.w * q.scale[0]);
         const f32 qcy = q.position[1] + (q.texture.h * q.scale[1]);
 
-        #define vertex(e, x, y, u, v) {\
-            Vertex tmp = (Vertex) { \
-                { x, y, 0.f }, { u, v }, \
-                { q.color.r, q.color.g, q.color.b, q.color.a } \
-            }; \
-            memcpy(quad_vertices[(i*6)+e].position, &tmp, sizeof(Vertex)); \
-            mat4_mulvec(quad_vertices[(i*6)+e].position, tmp.position, m); \
+        #define QUAD_PUSH_VERTEX(x, y, u, v) {                      \
+            Vertex tmp = (Vertex) {                                 \
+                { x/(resolution[0]/2), -y/(resolution[1]/2), 0.f }, \
+                { u, v },                                           \
+                { q.color.r, q.color.g, q.color.b, q.color.a }      \
+            };                                                      \
+            quad_vertices[ri++] = tmp;                              \
         }
 
-        vertex(0, qsx, qsy, tsx, tsy)
-        vertex(1, qsx, qcy, tsx, tcy)
-        vertex(2, qcx, qsy, tcx, tsy)
-
-        vertex(3, qcx, qcy, tcx, tcy)
-        vertex(4, qcx, qsy, tcx, tsy)
-        vertex(5, qsx, qcy, tsx, tcy)
+        QUAD_PUSH_VERTEX(qsx, qsy, tsx, tsy)
+        QUAD_PUSH_VERTEX(qsx, qcy, tsx, tcy)
+        QUAD_PUSH_VERTEX(qcx, qsy, tcx, tsy)
+        QUAD_PUSH_VERTEX(qcx, qcy, tcx, tcy)
+        QUAD_PUSH_VERTEX(qcx, qsy, tcx, tsy)
+        QUAD_PUSH_VERTEX(qsx, qcy, tsx, tcy)
 
     }
     vec_clear(&quads);

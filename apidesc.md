@@ -1,79 +1,68 @@
-#include <stdint.h>
-#include <stdbool.h>
+# BASKET
 
-typedef double f64;
-typedef float f32;
+### `Color`
+An union encoding color as 4 `u8` values (0 to 255) for `RGBA` color.
 
-typedef uint64_t u64;
-typedef uint32_t u32;
-typedef uint16_t u16;
-typedef uint8_t  u8;
+`COLOR_WHITE` is a macro that encodes pure white using the `Color` type.
 
-typedef int64_t i64;
-typedef int32_t i32;
-typedef int16_t i16;
-typedef int8_t  i8;
+#### Example
+```c
+const Color red = { .full = 0xFF0000FF };
+const Color green = { .g = 255 };
+const Color blue = { .array = { 0, 0, 255, 255 } };
+```
 
-/*
-    Basket design rules/style:
-    - Assume people will build their software around Basket, as a framework
-    - Null output or non-zero (true) equals error.
-    - snake_case for variables
-    - camelCase for functions
-    - PascalCase for types (except for number types)
-    - (const) char* for strings, not u8*
-    - Share the same header for programs and internals
-    - Default to 0, False, NULL
-
-    TODO:
-    - Add several passes for rendering with different textures, setups, etc.
-    - Add full featured system API, with self-extractable features
-    - Finish Audio API, make it comfier to use
-    - Documentation
-*/
+[//]: # "typedef struct {"
+[//]: # "    //  vec3         quat         vec3"
+[//]: # "    f32 position[3], rotation[4], scale[3];"
+[//]: # "} Transform;"
 
 
-// General //////////////////////////////////////////////////////
-    typedef union { 
-        struct { u8 a, b, g, r; };
-        u8 array[4];
-        u32 full;
-    } Color;
+## FILESYSTEM.C
+### `const char *fs_read(const char *name, u32 *length)`
+Reads a file of name `name`
 
-    typedef struct {
-        //  vec3         quat         vec3
-        f32 position[3], rotation[4], scale[3];
-    } Transform;
+It will try to read off the following paths:
+- `./package/`
+- `./package.bsk`
 
-    #define COLOR_WHITE (Color){ .full=0xffffffff }
+Sets the `u32` passed by pointer as `length` to the length of the file in bytes, ignored if `NULL`
 
-    #ifdef BASKET_INTERNAL
-        #include <SDL2/SDL.h>
+Returns `NULL` if it was unable to find/read the file.
 
-        // ... oh, windows.
-        #ifdef _WIN32
-            #undef near
-            #undef far
-        #endif
+#### Example
+```c
+const char hello_world = fs_read("hello_world.txt", NULL);
+printf("hello_world.txt: %s\n", hello_world);
 
-        #define  alloc(type,n) (calloc(n,  sizeof(type)))
-        #define falloc(type,n) (malloc(n * sizeof(type)))
-        #define min(a,b) (((a)<(b))?(a):(b))
-        #define max(a,b) (((a)>(b))?(a):(b))
-    #endif
+u32 length;
+const char image_data = fs_read("atlas.png", &length);
 
+Image image;
+img_init(&image, image_data, length);
+```
 
-// FILESYSTEM.C /////////////////////////////////////////////////
-    const char *fs_read(const char *name, u32 *length);
+<br>
 
-    int sav_identity(const char *identity);
-    int sav_store(const char *data, u32 length);
-    char *sav_retrieve(u32 *length);
+### `int sav_identity(const char *identity)`
+Sets the identity of the game, will try to create a folder in the following paths:
+- `C:\Users\<USERNAME>\AppData\Roaming\BASKET\<IDENTITY>`
+- `/home/<USERNAME>/.local/share/BASKET/<IDENTITY>`
+- `/Users/<USERNAME>/Library/Application Support/<IDENTITY>`
 
-    #ifdef BASKET_INTERNAL
-        int fs_init(const char *self);
-    #endif
+<br>
 
+### `int sav_store(const char *data, u32 length)`
+Stores `data` of `length` size into the game's savefile, returns non-zero if failed.
+
+> [!IMPORTANT] Remember to set the identity with [`sav_identity()`](#int-sav_identityconst-char-identity)
+
+<br>
+
+### `char *sav_retrieve(u32 *length)`
+Retrieves `data` from a savefile and sets an `u32` to the length of said data.
+
+Returns `NULL` if failed to read savefile, either by the savefile file not existing, some permission error or something else.
 
 // MODEL.C //////////////////////////////////////////////////////
     typedef struct {
@@ -300,22 +289,116 @@ typedef int8_t  i8;
     #endif
 
 
-// ENGINE.C
-    typedef struct {
-        int (*init)  ();
-        int (*frame) (f64 alpha, f64 delta);
-        int (*tick)  (f64 timestep);
-        int (*close) (void);
-    } Application; 
+## ENGINE.C
+### `Application`
+This struct contains a handful of Callbacks to be called in order, they all return a status code which, if non-zero, will cause the program to fail.
 
-    int  eng_main(Application app, const char *arg0);
-    void eng_close(); // Will close at the end of the frame
-    void eng_tickrate(f64 hz);
+```C
+typedef struct {
+    int (*init)  ();
+    int (*frame) (f64 alpha, f64 delta);
+    int (*tick)  (f64 timestep);
+    int (*close) (void);
+} Application; 
+```
 
-    void eng_window_size(u16 *w, u16 *h); // TODO: This shit is not future proof.
-    void eng_mouse_position(u16 *x, u16 *y);
-    bool eng_mouse_down(u8 button);
+- `init()`: Will be called once the engine is set up but not yet processing any frames.
+- `frame(f64 alpha, f64 delta)`: Will be called every frame, with alpha representing the interpolation time between two ticks, and delta representing how much seconds did the last frame took to render (smoothed)
+- `tick(f64 timestep)`: Will be called every N hertz (or `timestep` seconds), defined by [`eng_tickrate()`](#void-eng_tickratef64-hz), default is 30hz
+- `close()`: Executes once the Application quits, either by [`eng_close()`](#void-eng_close) or by an error return value on any of the callbacks (except itself, of course).
 
-    bool eng_is_focused();
-    void eng_set_debug(bool debug);
-    bool eng_is_debug();
+> [!IMPORTANT] Event polling happens at the same timestep as tick() is run, so don't go too nuts on it or else events will be VERY delayed. 
+
+<br>
+
+### `bool eng_main(Application app, const char *arg0)`
+Runs an [`Application`](#application), and returns the status code.
+Zero is okay, non-zero is error.
+
+> 
+
+
+#### Example:
+```c
+static int tick(f64 tickrate) {
+    printf("Hello world!\n");
+}
+
+static Application my_game = {
+    .frame = frame
+}
+
+int main(int argc, char *argv[]) {
+    return eng_main(my_game, argv[0]);
+}
+```
+
+<br>
+
+### `void eng_close()`
+Forces the engine to stop after frame is finished, once it's called it cannot be undone, meant to be used as a way to signal that you wanted to close the Application because it is intended behaviour and not an error.
+
+If it is because of an error, you might want to take a look at [`Application`](#application)'s use of return values on callbacks instead.
+
+<br>
+
+### `void eng_tickrate(f64 hz)`
+Sets the tickrate (in hertz) at which the [`Application.tick()`](#application) is ran, and at which rate to poll the events.
+
+<br>
+
+### `void eng_window_size(u16 *w, u16 *h)`
+Sets two `u16` integers to the width and height of the window respectively.
+
+If any pointer is `NULL`, it will be ignored.
+
+#### Example:
+```c
+u16 width, height;
+eng_window_size(&width, &height);
+
+printf("Width:  %u\n", width);
+printf("Height: %u\n", height);
+```
+
+<br>
+
+### `void eng_mouse_position(u16 *x, u16 *y)`
+Sets two `u16` integers to the X and Y of the cursor respectively.
+
+If any pointer is `NULL`, it will be ignored.
+
+#### Example:
+```c
+u16 mx, my;
+eng_mouse_position(&mx, &my);
+
+printf("Mouse X: %u\n", mx);
+printf("Mouse Y: %u\n", my);
+```
+<br>
+
+### `bool eng_mouse_down(u8 button)`
+Returns true whether mouse button is pressed in the current tick.
+
+<br>
+
+### `bool eng_is_focused()`
+Returns true if Application window is focused or not.
+
+<br>
+
+### `void eng_set_debug(bool debug)`
+Enables or disables [Debug Mode](#debug-mode).
+
+<br>
+
+### `bool eng_is_debug()`
+Returns true if [Debug Mode](#debug-mode) is enabled
+
+## Debug Mode
+Debug mode enables a set of useful debug functions and utilities, such as:
+- Enabling [`ren_log()`](#ren-log)
+- Enabling internal TinyFX OpenGL logs
+
+It can be enabled by [`eng_set_debug()`](#void-eng_set_debugbool-debug) and retrieved by [`eng_is_debug()`](#bool-eng_is_debug).

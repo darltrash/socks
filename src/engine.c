@@ -12,9 +12,7 @@
 #include "basket.h"
 #include "cute_sound.h"
 
-static f64 timestep;
-static f64 lag;// = timestep;
-static bool instant = false;
+static f64 hz;
 
 static bool running = true;
 static bool focused = true;
@@ -100,22 +98,27 @@ void eng_close() {
 
 // TODO: This shit is not future proof.
 void eng_window_size(u16 *w, u16 *h) {
-    *w = window_width;
-    *h = window_height;
+    if (w != NULL)
+        *w = window_width;
+
+    if (h != NULL)
+        *h = window_height;
 }
 
 void eng_mouse_position(u16 *x, u16 *y) {
-    *x = mouse_x;
-    *y = mouse_y;
+    if (x != NULL)
+        *x = mouse_x;
+    
+    if (y != NULL)
+        *y = mouse_y;
 }
 
 bool eng_mouse_down(u8 button) {
     return mouse_button[button % 3];
 }
 
-void eng_tickrate(f64 hz) {
-    instant = hz == 0.0;
-    timestep = 1.0/hz;
+void eng_tickrate(f64 _hz) {
+    hz = _hz;
 }
 
 bool eng_is_focused() {
@@ -130,8 +133,16 @@ bool eng_is_debug() {
     return is_debug;
 }
 
+static int ret = 0;
+
 #define ENG_CALL_IF_VALID(func, ...) {  \
-    int ret = 0;                        \
+    ret = 0;                            \
+    if (func)                           \
+        ret = func(__VA_ARGS__);        \
+}
+
+#define ENG_CALL_IF_VALID_LOOP(func, ...) {  \
+    ret = 0;                            \
     if (func)                           \
         ret = func(__VA_ARGS__);        \
                                         \
@@ -139,8 +150,98 @@ bool eng_is_debug() {
         return ret;                     \
 }
 
-bool eng_main(Application app, const char *arg0) {
-    printf("waste basket, keep my brain entertained.\n");
+static int eng_inner_loop(Application app, SDL_Window *window) {
+    // for our delta stuff
+    printf("setting up timer.\n");
+    u64 now = SDL_GetPerformanceCounter();
+    u64 last = now;
+
+    static f64 deltas[8];
+    u8 delta_idx = 0;
+    u8 delta_len = 0;
+
+    f32 lag = 1.0/hz;
+
+    eng_tickrate(30);
+
+    while (running) {
+        f32 timestep = 1.0/hz;
+
+        // calculate delta
+        now = SDL_GetPerformanceCounter();
+        f64 real_delta = (double)(now - last) / (double)SDL_GetPerformanceFrequency();
+        last = now;
+
+        // audio magic
+        cs_update(real_delta);
+
+        // delta smoothing:
+        deltas[delta_idx++] = real_delta;
+        delta_len = max(delta_len, delta_idx);
+        if (delta_idx == 8) delta_idx = 0;
+
+        f64 delta = 0.0;
+        for (u8 i=0; i < delta_len; i++)
+            delta += deltas[i];
+        delta /= (f64)delta_len;
+
+        if (hz == 0) {
+            SDL_Event ev;
+            while (SDL_PollEvent(&ev))
+                event(ev, window);
+
+            if (focused)
+                ENG_CALL_IF_VALID_LOOP(app.tick, delta)
+
+            inp_update(delta);
+
+        } else {
+            // fixed timesteps
+            lag += real_delta;
+            u8 n = 0;
+            while (lag > timestep) {
+                lag -= timestep;
+
+                // input polling! (delicious)
+                SDL_Event ev;
+                while (SDL_PollEvent(&ev))
+                    event(ev, window);
+
+                if (focused)
+                    ENG_CALL_IF_VALID_LOOP(app.tick, timestep)
+
+                inp_update(timestep);
+
+                // computer is too god damn slow, sorry.
+                if (n++ == 3) {
+                    lag = 0.0;
+                    printf("Could not hit %.1fhz!\n", hz);
+                    break;
+                }
+            }
+
+        }
+
+        ENG_CALL_IF_VALID_LOOP(app.frame, lag / timestep, delta)
+        
+        if (!focused) {
+            u16 w, h; 
+            ren_size(&w, &h);
+
+            ren_rect(-(i32)(w/2), -(i32)(w/2), h*2, h*2, (Color){ .full = 0x00000055 });
+        }
+
+        if (ren_frame())
+            return 1;
+
+        SDL_GL_SwapWindow(window);
+    }
+
+    return 0;
+}
+
+int eng_main(Application app, const char *arg0) {
+    printf("hello world, i'm basket.\n");
 
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
 
@@ -191,102 +292,21 @@ bool eng_main(Application app, const char *arg0) {
     inp_register_scancode("c", INP_MENU   ),
 
     // sigh...
-    inp_register_scancode("space", INP_JUMP),
+    inp_register_scancode("space", INP_JUMP);
 
-    // for our delta stuff
-    printf("setting up timer.\n");
-    u64 now = SDL_GetPerformanceCounter();
-    u64 last = now;
-
-    static f64 deltas[8];
-    u8 delta_idx = 0;
-    u8 delta_len = 0;
-
-    f64 timer;
-
-    eng_tickrate(30);
+    ret = 0;
 
     ENG_CALL_IF_VALID(app.init)
-    lag = timestep;
 
-    running = true;
-
-    while (running) {
-        // calculate delta
-        now = SDL_GetPerformanceCounter();
-        f64 real_delta = (double)(now - last) / (double)SDL_GetPerformanceFrequency();
-        last = now;
-
-        // audio magic
-        cs_update(real_delta);
-
-        // delta smoothing:
-        deltas[delta_idx++] = real_delta;
-        delta_len = max(delta_len, delta_idx);
-        if (delta_idx == 8) delta_idx = 0;
-
-        f64 delta = 0.0;
-        for (u8 i=0; i < delta_len; i++)
-            delta += deltas[i];
-        delta /= (f64)delta_len;
-
-        if (instant) {
-            SDL_Event ev;
-            while (SDL_PollEvent(&ev))
-                event(ev, window);
-
-            if (focused)
-                ENG_CALL_IF_VALID(app.tick, timestep)
-
-            inp_update(timestep);
-
-        } else {
-            // fixed timesteps
-            lag += real_delta;
-            u8 n = 0;
-            while (lag > timestep) {
-                lag -= timestep;
-
-                // input polling! (delicious)
-                SDL_Event ev;
-                while (SDL_PollEvent(&ev))
-                    event(ev, window);
-
-                if (focused)
-                    ENG_CALL_IF_VALID(app.tick, timestep)
-
-                inp_update(timestep);
-
-                // computer is too god damn slow, sorry.
-                if (n++ == 3) {
-                    lag = 0.0;
-                    printf("Could not hit %.2fhz!\n", 1.0/timestep);
-                    break;
-                }
-            }
-
-        }
-
-        ENG_CALL_IF_VALID(app.frame, lag / timestep, delta)
-        
-        if (!focused) {
-            u16 w, h; 
-            ren_size(&w, &h);
-
-            ren_rect(-w, -w, h, h, (Color){ .full = 0x000000FF });
-        }
-
-        if (ren_frame())
-            return 1;
-
-        SDL_GL_SwapWindow(window);
+    if (!ret) {
+        ret = eng_inner_loop(app, window);
     }
 
     ren_byebye();
     printf("byebye says the window.\n");
     SDL_DestroyWindow(window);
 
-    printf("byebye says the music.\n");
+    printf("byebreturn retye says the music.\n");
     cs_shutdown();
 
     printf("byebye says the world.\n");
@@ -294,8 +314,7 @@ bool eng_main(Application app, const char *arg0) {
 
     printf("the end.\n");
 
-    if (app.close)
-        app.close();
+    ENG_CALL_IF_VALID(app.close)
 
-    return 0;
+    return ret;
 }
