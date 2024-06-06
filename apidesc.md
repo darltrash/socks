@@ -50,7 +50,7 @@ An union encoding color as 4 `u8` values (0 to 255) for `RGBA` color.
 
 `COLOR_WHITE` is a macro that encodes pure white using the `Color` type.
 
-#### Example
+**Example:**
 ```c
 const Color red = { .full = 0xFF0000FF };
 const Color green = { .g = 255 };
