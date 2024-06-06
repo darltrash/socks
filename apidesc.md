@@ -3,7 +3,6 @@
 <!-- TOC -->
 - [GENERAL](#general)
     - [`Color`](#color)
-        - [Example](#example)
     - [`Transform`](#transform)
 - [FILESYSTEM.C](#filesystemc)
     - [`const char *fs_read(const char *name, u32 *length)`](#const-char-fs_readconst-char-name-u32-length)
