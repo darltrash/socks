@@ -164,8 +164,8 @@ typedef int8_t  i8;
         u16 w, h;
     } Image;
 
-    int img_init(Image *texture, const char *data, u32 length);
-    void img_free(Image *texture);
+    int img_init(Image *image, const char *data, u32 length);
+    void img_free(Image *image);
 
 
 // MAFS.C ///////////////////////////////////////////////////////

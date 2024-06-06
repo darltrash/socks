@@ -21,6 +21,10 @@
     - [`Model`](#model)
     - [`int mod_init(Model *model, const char *data)`](#int-mod_initmodel-model-const-char-data)
     - [`void mod_free(Model *model)`](#void-mod_freemodel-model)
+- [IMAGE.C](#imagec)
+    - [`Image`](#image)
+    - [`bool img_init(Image *image, const char *data, u32 length)`](#bool-img_initimage-image-const-char-data-u32-length)
+    - [`void img_free(Image *image)`](#void-img_freeimage-image)
 - [ENGINE.C](#enginec)
     - [`Application`](#application)
     - [`bool eng_main(Application app, const char *arg0)`](#bool-eng_mainapplication-app-const-char-arg0)
@@ -67,6 +71,7 @@ typedef struct {
 ```
 Encodes a transformation.
 
+<br>
 
 ## FILESYSTEM.C
 ### `const char *fs_read(const char *name, u32 *length)`
@@ -115,7 +120,7 @@ Retrieves `data` from a savefile and sets an `u32` to the length of said data.
 
 Returns `NULL` if failed to read savefile, either by the savefile file not existing, some permission error or something else.
 
-// MODEL.C //////////////////////////////////////////////////////
+<br>
 
 ## MODEL.C
 ### `Vertex`
@@ -234,10 +239,12 @@ Usually this `extra` value encodes a JSON block of assorted content in EXM files
 
 Also usually treat this type as a transient type, it's only purpose is to account for C's lack of several return values per function.
 
+Can be loaded by [`mod_init`](#int-mod_initmodel-model-const-char-data) and freed by [`mod_free`](#void-mod_freemodel-model). 
+
 <br>
 
 ### `int mod_init(Model *model, const char *data)`
-Loads a Model into `model` from `data`, returns non-zero if failed.
+Loads a [`Model`](#model) into `model` from `data`, returns non-zero if failed.
 
 Supports the following model formats:
 - Inter Quake Model V2 (`.iqm`)
@@ -250,47 +257,64 @@ const char *data = fs_read("my_model.exm", NULL);
 Model model;
 int ret = mod_init(&model, data);
 
-if (ret)
+if (!ret)
     print("OK\n");
 ```
 
 <br>
 
 ### `void mod_free(Model *model)`
-Unloads a model, internally freeing absolutely all memory inside `model`.
+Unloads a [`Model`](#model), internally freeing absolutely all memory inside `model`.
 
-// AUDIO.C //////////////////////////////////////////////////////
-    typedef u32 Sound;
-    typedef u32 Source;
+<br>
 
-    Sound aud_load_ogg(const u8 *mem, u32 length, bool spatialize);
-    void aud_free(Sound audio);
-    Source aud_play(Sound audio);
-    void aud_set_position(Sound audio, f32 position[3]);
-    void aud_set_velocity(Sound audio, f32 velocity[3]);
-    void aud_set_paused(Sound audio, bool paused);
-    void aud_set_looping(Sound audio, bool paused);
-    void aud_set_pitch(Sound audio, f32 pitch);
-    void aud_set_area(Sound audio, f32 distance);
-    void aud_set_gain(Sound audio, f32 gain);
-    void aud_listener(f32 position[3]);
+## IMAGE.C
+### `Image`
+```c
+typedef struct {
+    Color *pixels;
+    u16 w, h;
+} Image;
+```
+Encodes an image, using an array of pixels, a width and a height.
+Up to 65536x65536 pixels.
 
-    #ifdef BASKET_INTERNAL
-        int aud_init();
-        int aud_byebye();
-    #endif
+Can be loaded by [`img_init`](#bool-img_initimage-image-const-char-data-u32-length) and freed by [`img_free`](#void-img_freeimage-image). 
 
+<br>
 
-// TEXTURE.C ////////////////////////////////////////////////////
-    typedef struct {
-        Color *pixels;
-        u16 w, h;
-    } Image;
+### `bool img_init(Image *image, const char *data, u32 length)`
+Loads an [`Image`](#image) into `image` from `data` of size `length` (in bytes), returns non-zero if failed.
 
-    bool img_init(Image *texture, const char *data, u32 length);
-    void img_free(Image *texture);
+Supports the following formats:
+- JPEG
+- PNG
+- BMP
+- PSD
+- TGA
+- PIC
+- PNM
 
+```c
+u32 length;
+const char *data = fs_read("my_image.png", &length);
 
+Image image;
+int ret = img_init(&image, data, length);
+
+if (!ret)
+    print("OK\n");
+```
+
+<br>
+
+### `void img_free(Image *image)`
+Unloads an [`Image`](#image), internally freeing `image->pixels`, and setting both `image->w` and `image->h` to zero.
+
+<br>
+
+## TRANSLATE LATER TODO UUGUUGUGUGUUG
+```c
 // MAFS.C ///////////////////////////////////////////////////////
     typedef struct {
         f32 left[4];
@@ -390,7 +414,7 @@ Unloads a model, internally freeing absolutely all memory inside `model`.
         int ren_frame();
         void ren_byebye();
     #endif
-
+```
 
 // INPUT.C //////////////////////////////////////////////////////
     enum {
