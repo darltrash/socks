@@ -1,7 +1,7 @@
 #include "basket.h"
 #include "stb_image.h"
 
-bool img_init(Image *texture, const char *data, u32 length) {
+int img_init(Image *texture, const char *data, u32 length) {
     int w, h, c;
 
     // TODO: HANDLE OTHER CASES(? :O

@@ -132,7 +132,7 @@ typedef int8_t  i8;
         char *extra;
     } Model;
 
-    bool mod_init(Model *map, const char *data);
+    int mod_init(Model *model, const char *data);
     void mod_free(Model *model);
 
 
@@ -164,7 +164,7 @@ typedef int8_t  i8;
         u16 w, h;
     } Image;
 
-    bool img_init(Image *texture, const char *data, u32 length);
+    int img_init(Image *texture, const char *data, u32 length);
     void img_free(Image *texture);
 
 

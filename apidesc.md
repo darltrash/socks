@@ -4,12 +4,24 @@
 - [GENERAL](#general)
     - [`Color`](#color)
         - [Example](#example)
+    - [`Transform`](#transform)
 - [FILESYSTEM.C](#filesystemc)
     - [`const char *fs_read(const char *name, u32 *length)`](#const-char-fs_readconst-char-name-u32-length)
-        - [Example](#example)
     - [`int sav_identity(const char *identity)`](#int-sav_identityconst-char-identity)
     - [`int sav_store(const char *data, u32 length)`](#int-sav_storeconst-char-data-u32-length)
     - [`char *sav_retrieve(u32 *length)`](#char-sav_retrieveu32-length)
+- [MODEL.C](#modelc)
+    - [`Vertex`](#vertex)
+    - [`VertexAnim` (NYI)](#vertexanim-nyi)
+    - [`RenderBox` (NYI)](#renderbox-nyi)
+    - [`MeshSlice`](#meshslice)
+    - [`Bone` (NYI)](#bone-nyi)
+    - [`Animation` (NYI)](#animation-nyi)
+    - [`AnimationFrame` (NYI)](#animationframe-nyi)
+    - [`AnimationState` (NYI)](#animationstate-nyi)
+    - [`Model`](#model)
+    - [`int mod_init(Model *model, const char *data)`](#int-mod_initmodel-model-const-char-data)
+    - [`void mod_free(Model *model)`](#void-mod_freemodel-model)
 - [ENGINE.C](#enginec)
     - [`Application`](#application)
     - [`bool eng_main(Application app, const char *arg0)`](#bool-eng_mainapplication-app-const-char-arg0)
@@ -27,6 +39,13 @@
 
 ## GENERAL
 ### `Color`
+```c
+typedef union { 
+    struct { u8 a, b, g, r; };
+    u8 array[4];
+    u32 full;
+} Color;
+```
 An union encoding color as 4 `u8` values (0 to 255) for `RGBA` color.
 
 `COLOR_WHITE` is a macro that encodes pure white using the `Color` type.
@@ -38,10 +57,16 @@ const Color green = { .g = 255 };
 const Color blue = { .array = { 0, 0, 255, 255 } };
 ```
 
-[//]: # "typedef struct {"
-[//]: # "    //  vec3         quat         vec3"
-[//]: # "    f32 position[3], rotation[4], scale[3];"
-[//]: # "} Transform;"
+<br>
+
+### `Transform`
+```c
+typedef struct {
+    //  vec3         quat         vec3
+    f32 position[3], rotation[4], scale[3];
+} Transform;
+```
+Encodes a transformation.
 
 
 ## FILESYSTEM.C
@@ -92,65 +117,148 @@ Retrieves `data` from a savefile and sets an `u32` to the length of said data.
 Returns `NULL` if failed to read savefile, either by the savefile file not existing, some permission error or something else.
 
 // MODEL.C //////////////////////////////////////////////////////
-    typedef struct {
-        f32 position[3];
-        f32 uv[2];
-        Color color;
-    } Vertex;
 
-    typedef struct {
-        u8 bone[4];
-        u8 weight[4];
-    } VertexAnim;
+## MODEL.C
+### `Vertex`
+```c
+typedef struct {
+    f32 position[3];
+    f32 uv[2];
+    Color color;
+} Vertex;
+```
+Encodes vertices to be sent to the GPU.
 
-    typedef struct {
-        f32 min[3];
-        f32 max[3];
-    } RenderBox;
+<br>
 
-    typedef struct {
-        Vertex *data;
-        VertexAnim *animation; // Can be NULL
-        u32 length;
-        RenderBox box;
-    } MeshSlice;
+### `VertexAnim` (NYI)
+```c
+typedef struct {
+    u8 bone[4];
+    u8 weight[4];
+} VertexAnim;
+```
+Encodes the vertex part used for animation.
 
-    typedef struct {
-        char name[64];
-        u32 parent;
-        Transform transform;
-        f32 transform_mat4[16];
-    } Bone;
+<br>
 
-    typedef struct {
-        char *name;
-        u32 first, last;
-        f32 rate;
-        bool loops;
-    } Animation;
+### `RenderBox` (NYI)
+```c
+typedef struct {
+    f32 min[3];
+    f32 max[3];
+} RenderBox;
+```
+Encodes a box used for frustum culling.
 
-    typedef Transform* AnimationFrame;
+<br>
 
-    typedef struct {
-        Bone *bones;
-        u32 bone_amount;
-        
-        Animation *animations;
-        u32 animation_amount;
+### `MeshSlice`
+```c
+typedef struct {
+    Vertex *data;
+    VertexAnim *animation;
+    u32 length;
+    RenderBox box;
+} MeshSlice;
+```
+Represents a Mesh, a model.
 
-        AnimationFrame *frames, bind_pose, pose;
-    } AnimationState;
+It contains an array of [`Vertex`](#vertex), an optional array of [`VertexAnim`](#vertexanim), their respective size (in amount) and a [`RenderBox`](#renderbox-nyi) for frustum culling (RENDERBOX IS NYI)
 
-    typedef struct {
-        MeshSlice mesh;
-        AnimationState animation;
+Can be taken from a [`Model`](#model)'s mesh property, and thus loaded from [`mod_init`](#mod_init)
 
-        char *extra;
-    } Model;
+<br>
 
-    bool mod_init(Model *map, const char *data);
-    void mod_free(Model *model);
+### `Bone` (NYI)
+```c
+typedef struct {
+    char name[64];
+    u32 parent;
+    Transform transform;
+    f32 transform_mat4[16];
+} Bone;
+```
+Encodes an animation bone, NYI!
 
+<br>
+
+### `Animation` (NYI)
+```c
+typedef struct {
+    char *name;
+    u32 first, last;
+    f32 rate;
+    bool loops;
+} Animation;
+```
+Encodes an animation, NYI!
+
+<br>
+
+### `AnimationFrame` (NYI)
+```c
+typedef Transform* AnimationFrame;
+```
+Encodes an array of Transform, the frame of an animation. NYI!
+
+<br>
+
+### `AnimationState` (NYI)
+```c
+typedef struct {
+    Bone *bones;
+    u32 bone_amount;
+    
+    Animation *animations;
+    u32 animation_amount;
+
+    AnimationFrame *frames, bind_pose, pose;
+} AnimationState;
+```
+Encodes an Animation state, meant to be kept separate from the actual Model.
+
+<br>
+
+### `Model`
+```c
+typedef struct {
+    MeshSlice mesh;
+    AnimationState animation;
+
+    char *extra;
+} Model;
+```
+Encodes a model, it contains a [`MeshSlice`](#meshslice) that can be rendered, and an optional `èxtra` value.
+
+Usually this `extra` value encodes a JSON block of assorted content in EXM files.
+
+Also usually treat this type as a transient type, it's only purpose is to account for C's lack of several return values per function.
+
+<br>
+
+### `int mod_init(Model *model, const char *data)`
+Loads a Model into `model` from `data`, returns non-zero if failed.
+
+Supports the following model formats:
+- Inter Quake Model V2 (`.iqm`)
+- Excessive Model (`.exm`)
+
+**Example:**
+```c
+const char *data = fs_read("my_model.exm", NULL);
+
+Model model;
+int ret = mod_init(&model, data);
+
+if (ret)
+    print("OK\n");
+```
+
+<br>
+
+### `void mod_free(Model *model)`
+Unloads a model, internally freeing absolutely all memory inside `model`.
 
 // AUDIO.C //////////////////////////////////////////////////////
     typedef u32 Sound;

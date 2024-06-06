@@ -311,7 +311,7 @@ bool bbm_init(Model *map, const char *data) {
 }
 
 
-bool mod_init(Model *map, const char *data) {
+int mod_init(Model *map, const char *data) {
     if (!iqm_init(map, data)) {
         return 0;
     }
