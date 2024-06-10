@@ -186,7 +186,7 @@ static tfx_program shader(const char *data, const char *attribs[]) {
 }
 
 
-bool ren_init(SDL_Window *_window) {
+int ren_init(SDL_Window *_window) {
     printf("setting up renderer.\n");
 
     window = _window;
@@ -287,7 +287,7 @@ bool ren_init(SDL_Window *_window) {
     vec_init(&quads);
     vec_init(&lights);
 
-    return false;
+    return 0;
 }
 
 f32 camera_target[3] = { 0.0f, 0.0f, 0.0f };
@@ -514,7 +514,7 @@ int ren_frame() {
 
         mat4_mulvec(position, light.position, view_matrix);
 
-        if (frustum_vs_sphere(frustum, position, area * 2)) {
+        if (frustum_vs_sphere(frustum, position, area * 9)) {
             memcpy(color, light.color, sizeof(light.color));
 
             if (real_index++ > LIGHT_AMOUNT)

@@ -1,4 +1,3 @@
-// we will only use PNGs on this current project.
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_NO_STDIO
 #define STBI_NO_GIF
@@ -12,17 +11,6 @@
 #define STB_VORBIS_NO_STDIO
 #define STB_VORBIS_NO_PUSHDATA_API
 #include "stb_vorbis.h"
-
-// we force SDL2 here because we already have SDL2 as the base of the program
-// no matter what platform, and keeps things consistent.
-#define CUTE_SOUND_IMPLEMENTATION
-#define CUTE_SOUND_FORCE_SDL
-#define CUTE_SOUND_PLATFORM CUTE_SOUND_SDL
-#define CUTE_SOUND_SDL_H <SDL2/SDL.h>
-#ifndef __SSE__
-#define CUTE_SOUND_SCALAR_MODE 1
-#endif
-#include "cute_sound.h"
 
 #define STB_PERLIN_IMPLEMENTATION
 #include "stb_perlin.h"

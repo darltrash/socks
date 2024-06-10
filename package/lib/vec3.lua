@@ -2,11 +2,31 @@ local vec3 = {}
 
 local tmp_out = {}
 
+vec3.cross = function (a, b, out)
+    assert(#a == 3)
+    out = out or {}
+    
+    out[1] = a[2] * b[3] - a[3] * b[2]
+    out[2] = a[3] * b[1] - a[1] * b[3]
+    out[3] = a[1] * b[2] - a[2] * b[1]
+    
+    return out
+end
+
 vec3.add = function (a, b, len, out)
     out = out or {}
     len = len or #a
     for x=1, len do
         out[x] = a[x] + b[x]
+    end
+    return out
+end
+
+vec3.add_val = function (a, b, len, out)
+    out = out or {}
+    len = len or #a
+    for x=1, len do
+        out[x] = a[x] + b
     end
     return out
 end
@@ -111,6 +131,24 @@ vec3.random = function (len)
     end
 
     return vec3.normalize(r)
+end
+
+vec3.min = function (a, b, len, out)
+    out = out or {}
+    len = len or #a
+    for x=1, len do
+        out[x] = math.min(a[x], b[x])
+    end
+    return out
+end
+
+vec3.max = function (a, b, len, out)
+    out = out or {}
+    len = len or #a
+    for x=1, len do
+        out[x] = math.max(a[x], b[x])
+    end
+    return out
 end
 
 vec3.zero2 = {0, 0}

@@ -62,9 +62,26 @@ typedef int8_t  i8;
         #define max(a,b) (((a)>(b))?(a):(b))
     #endif
 
+    enum  {
+        BSKT_UNKNOWN = 0xBA5, // also known as min
+
+        BSKT_FS_COULDNT_FIND_PACKAGE,
+
+        BSKT_SAV_COULDNT_SAVE,
+
+        BSKT_MOD_UNRECOGNIZED_FORMAT,
+        
+        BSKT_AUD_,
+
+        BSKT_IMG_COULDNT_LOAD_IMAGE,
+
+        BSKT_REN_COULDNT_INIT,
+        BSKT_REN_COULDNT_RENDER_FRAME
+    };
+
 
 // FILESYSTEM.C /////////////////////////////////////////////////
-    const char *fs_read(const char *name, u32 *length);
+    char *fs_read(const char *name, u32 *length);
 
     int sav_identity(const char *identity);
     int sav_store(const char *data, u32 length);
@@ -137,20 +154,25 @@ typedef int8_t  i8;
 
 
 // AUDIO.C //////////////////////////////////////////////////////
-    typedef u32 Sound;
-    typedef u32 Source;
+    typedef u32 Sound;  // Raw sound
+    typedef u32 Source; // Sound source (spatial)
 
-    Sound aud_load_ogg(const u8 *mem, u32 length, bool spatialize);
-    void aud_free(Sound audio);
-    Source aud_play(Sound audio);
-    void aud_set_position(Sound audio, f32 position[3]);
-    void aud_set_velocity(Sound audio, f32 velocity[3]);
-    void aud_set_paused(Sound audio, bool paused);
-    void aud_set_looping(Sound audio, bool paused);
-    void aud_set_pitch(Sound audio, f32 pitch);
-    void aud_set_area(Sound audio, f32 distance);
-    void aud_set_gain(Sound audio, f32 gain);
+    int aud_load_ogg(Sound *sound, const u8 *mem, u32 length, bool spatialize);
+    int aud_init_source(Source *source, Sound audio);
+    void aud_free(Source audio);
+    void aud_play(Source audio);
+    void aud_set_position(Source audio, f32 position[3]);
+    void aud_set_velocity(Source audio, f32 velocity[3]);
+    void aud_set_paused(Source audio, bool paused);
+    void aud_set_looping(Source audio, bool paused);
+    void aud_set_pitch(Source audio, f32 pitch);
+    void aud_set_area(Source audio, f32 distance);
+    void aud_set_gain(Source audio, f32 gain);
     void aud_listener(f32 position[3]);
+    void aud_orientation(f32 orientation[6]);
+
+    void aud_gain(f32 volume);
+    void aud_pause(bool pause);
 
     #ifdef BASKET_INTERNAL
         int aud_init();
@@ -263,7 +285,7 @@ typedef int8_t  i8;
     void ren_tex_bind(Texture main, Texture lumos);
 
     #ifdef BASKET_INTERNAL
-        bool ren_init(SDL_Window *window);
+        int ren_init(SDL_Window *window);
         int ren_frame();
         void ren_byebye();
     #endif
@@ -294,7 +316,8 @@ typedef int8_t  i8;
     const char *inp_get_key(u8 button);
 
     #ifdef BASKET_INTERNAL
-        void inp_setup();
+        int inp_init();
+        void inp_byebye();
         void inp_event(SDL_Event event);
         bool inp_update(f64 timestep);
     #endif
@@ -305,11 +328,13 @@ typedef int8_t  i8;
         int (*init)  ();
         int (*frame) (f64 alpha, f64 delta);
         int (*tick)  (f64 timestep);
-        int (*close) (void);
+        int (*close) (int ret);
     } Application; 
+
 
     int  eng_main(Application app, const char *arg0);
     void eng_close(); // Will close at the end of the frame
+    void eng_halt(const char* str, ...); // Will force the game to close
     void eng_tickrate(f64 hz);
 
     void eng_window_size(u16 *w, u16 *h); // TODO: This shit is not future proof.
@@ -319,3 +344,5 @@ typedef int8_t  i8;
     bool eng_is_focused();
     void eng_set_debug(bool debug);
     bool eng_is_debug();
+
+    const char *eng_error_string(int error);

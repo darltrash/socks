@@ -6,9 +6,9 @@
 #define BASKET_INTERNAL
 #include "basket.h"
 
-/*
 #define STB_VORBIS_NO_PUSHDATA_API
 #define STB_VORBIS_NO_STDIO
+#define STB_VORBIS_HEADER_ONLY
 #include "stb_vorbis.h"
 
 
@@ -38,75 +38,92 @@ int aud_init() {
     return 0;
 }
 
-Sound aud_load_ogg(const u8 *mem, u32 len, bool spatialize) {
+int aud_load_ogg(Sound *sound, const u8 *mem, u32 len, bool spatialize) {
     int channels, sample_rate;
     short *decoded_data;
     int samples = stb_vorbis_decode_memory(mem, len, &channels, &sample_rate, &decoded_data);
 
     if (spatialize) {
-        // downmix!
+        // downmix! 
+        // TODO: PORT THIS TO MORE CHANNELS
         if (channels == 2) {
             int o = 0;
-            for (int i = 0; i > samples; i += 2)
-                decoded_data[o++] = decoded_data[i];
+
+            for (int i = 0; i < samples; i += 2) 
+                decoded_data[o++] = (decoded_data[i] + decoded_data[i + 1]) / 2;
 
             samples = samples / 2;
             channels = 1;
         }
     }
 
-    Sound audio;
-    alGenBuffers(1, &audio);
+    alGenBuffers(1, sound);
 
-    alBufferData(audio, (channels == 1) ? AL_FORMAT_MONO16 : AL_FORMAT_STEREO16, decoded_data, samples * channels * sizeof(short), sample_rate);
+    alBufferData(
+        *sound, (channels == 1) ? AL_FORMAT_MONO16 : AL_FORMAT_STEREO16, 
+        decoded_data, samples * channels * sizeof(short), sample_rate
+    );
     
     free(decoded_data);
 
-    return audio;
+    return 0;
 }
 
-Source aud_play(Sound audio) {
-    Source source;
-    alGenSources(1, &source);
-    alSourcei(source, AL_BUFFER, audio);
+int aud_init_source(Source *source, Sound audio) {
+    alGenSources(1, source);
+    alSourcei(*source, AL_BUFFER, audio);
 
+    return 0;
+}
+
+void aud_play(Source source) {
     alSourcePlay(source);
-
-    return source;
 }
 
-void aud_set_position(Sound audio, f32 position[3]) {
+void aud_set_position(Source audio, f32 position[3]) {
     alSource3f(audio, AL_POSITION, position[0], position[1], position[2]);
     alSourcei(audio, AL_DISTANCE_MODEL, AL_INVERSE_DISTANCE);
 }
 
-void aud_set_velocity(Sound audio, f32 velocity[3]) {
+void aud_set_velocity(Source audio, f32 velocity[3]) {
     alSource3f(audio, AL_VELOCITY, velocity[0], velocity[1], velocity[2]);
 }
 
 // TODO: CHECK IF EVIL
-void aud_set_paused(Sound audio, bool paused) {
+void aud_set_paused(Source audio, bool paused) {
     alSourcei(audio, AL_PAUSED, paused);
 }
 
-void aud_set_looping(Sound audio, bool paused) {
+void aud_set_looping(Source audio, bool paused) {
     alSourcei(audio, AL_LOOPING, paused);
 }
 
-void aud_set_pitch(Sound audio, f32 pitch) {
+void aud_set_pitch(Source audio, f32 pitch) {
     alSourcef(audio, AL_PITCH, pitch);
 }
 
-void aud_set_area(Sound audio, f32 distance) {
+void aud_set_area(Source audio, f32 distance) {
     alSourcef(audio, AL_MAX_DISTANCE, distance);
 }
 
-void aud_set_gain(Sound audio, f32 gain) {
+void aud_set_gain(Source audio, f32 gain) {
     alSourcef(audio, AL_GAIN, gain);
 }
 
 void aud_listener(f32 position[3]) {
     alListener3f(AL_POSITION, position[0], position[1], position[2]);
+}
+
+void aud_orientation(f32 orientation[6]) {
+    alListenerfv(AL_ORIENTATION, orientation);
+}
+
+void aud_listener_gain(f32 volume) {
+    alListeneri(AL_GAIN, volume);
+}
+
+void aud_global_pause(bool pause) {
+    alListeneri(AL_PAUSED, pause);
 }
 
 int aud_byebye() {
@@ -118,5 +135,3 @@ int aud_byebye() {
 
     return 0;
 }
-
-*/

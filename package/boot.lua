@@ -106,5 +106,10 @@ end
 
 eng.timer = 0
 
+if os.getenv("BSKT_LEVEL_VIEW") then
+    xpcall(require, on_error, "viewer")
+    return
+end
+
 -- try to load the game 
 xpcall(require, on_error, "game")

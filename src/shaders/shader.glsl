@@ -49,7 +49,8 @@
         }
 
         // magic sauce
-        lighting = mix(lighting, vec3(luma(lighting)*1.0), smoothstep(0.45, 1.0, luma(lighting)) * 0.95);
+        float l = luma(lighting);
+        lighting = mix(lighting, vec3(l), smoothstep(0.65, 1.0, l) * 0.95);
     }
 #endif
 

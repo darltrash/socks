@@ -5,21 +5,8 @@
 extern "C" {
 #endif
 
-#ifndef ALC_API
- #if defined(AL_LIBTYPE_STATIC)
-  #define ALC_API
- #elif defined(_WIN32)
-  #define ALC_API __declspec(dllimport)
- #else
-  #define ALC_API extern
- #endif
-#endif
-
-#if defined(_WIN32)
- #define ALC_APIENTRY __cdecl
-#else
- #define ALC_APIENTRY
-#endif
+#define ALC_API
+#define ALC_APIENTRY
 
 #include "al.h"
 

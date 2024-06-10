@@ -1,5 +1,6 @@
 // the brain.
 
+#include <SDL2/SDL_messagebox.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -10,7 +11,6 @@
 
 #define BASKET_INTERNAL
 #include "basket.h"
-#include "cute_sound.h"
 
 static f64 hz;
 
@@ -73,13 +73,13 @@ void event(SDL_Event event, SDL_Window *window) {
                 }
 
                 case SDL_WINDOWEVENT_FOCUS_LOST: {
-                    cs_set_global_pause(true);
+                    // cs_set_global_pause(true);
                     focused = false;
                     break;
                 }
 
                 case SDL_WINDOWEVENT_FOCUS_GAINED: {
-                    cs_set_global_pause(false);
+                    // cs_set_global_pause(false);
                     focused = true;
                     break;
                 }
@@ -108,7 +108,7 @@ void eng_window_size(u16 *w, u16 *h) {
 void eng_mouse_position(u16 *x, u16 *y) {
     if (x != NULL)
         *x = mouse_x;
-    
+
     if (y != NULL)
         *y = mouse_y;
 }
@@ -133,24 +133,87 @@ bool eng_is_debug() {
     return is_debug;
 }
 
-static int ret = 0;
+const char *eng_error_string(int error) {
+    switch (error) {
+        case BSKT_UNKNOWN:                  return "Unknown error!";
+        case BSKT_FS_COULDNT_FIND_PACKAGE:  return "Could not find package!";
+        case BSKT_SAV_COULDNT_SAVE:         return "Could not save to savefile!";
+        case BSKT_MOD_UNRECOGNIZED_FORMAT:  return "Unrecognized model format!";
+        case BSKT_IMG_COULDNT_LOAD_IMAGE:   return "Could not load image!";
+        case BSKT_REN_COULDNT_INIT:         return "Could not initialize renderer!";
+        case BSKT_REN_COULDNT_RENDER_FRAME: return "Could not render frame!";
+    }
 
-#define ENG_CALL_IF_VALID(func, ...) {  \
-    ret = 0;                            \
-    if (func)                           \
-        ret = func(__VA_ARGS__);        \
+    return NULL;
 }
 
-#define ENG_CALL_IF_VALID_LOOP(func, ...) {  \
-    ret = 0;                            \
-    if (func)                           \
-        ret = func(__VA_ARGS__);        \
-                                        \
-    if (ret)                            \
-        return ret;                     \
+#define ENG_CALL_IF_VALID(func, ...) { \
+    ret = 0;                           \
+    if (func)                          \
+        ret = func(__VA_ARGS__);       \
+                                       \
+    if (ret)                           \
+        goto general_error;            \
 }
 
-static int eng_inner_loop(Application app, SDL_Window *window) {
+int eng_main(Application app, const char *arg0) {
+    printf("hello world, i'm basket.\n");
+
+    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
+
+  	SDL_Window *window = SDL_CreateWindow(
+        "socks",
+  	    SDL_WINDOWPOS_UNDEFINED,
+        SDL_WINDOWPOS_UNDEFINED,
+  	    window_width, window_height,
+  	    SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE
+  	);
+
+    int ret = 0;
+
+    // filesystem.
+    ret = fs_init(arg0);
+    if (ret)
+        goto fs_init_error;
+
+    // audio.
+    ret = aud_init();
+    if (ret)
+        goto aud_init_error;
+
+    // renderer.
+    ret = ren_init(window);
+    if (ret)
+        goto ren_init_error;
+
+    // input
+    ret = inp_init();
+    if (ret)
+        goto inp_init_error;
+
+    inp_register_scancode("w", INP_UP    ),
+    inp_register_scancode("s", INP_DOWN  ),
+    inp_register_scancode("a", INP_LEFT  ),
+    inp_register_scancode("d", INP_RIGHT ),
+    
+    inp_register_scancode("j", INP_JUMP   ),
+    inp_register_scancode("k", INP_ATTACK ),
+    inp_register_scancode("l", INP_MENU   ),
+
+    inp_register_scancode("up",    INP_UP    ),
+    inp_register_scancode("down",  INP_DOWN  ),
+    inp_register_scancode("left",  INP_LEFT  ),
+    inp_register_scancode("right", INP_RIGHT ),
+
+    inp_register_scancode("z", INP_JUMP   ),
+    inp_register_scancode("x", INP_ATTACK ),
+    inp_register_scancode("c", INP_MENU   ),
+
+    // sigh...
+    inp_register_scancode("space", INP_JUMP);
+
+    ENG_CALL_IF_VALID(app.init)
+
     // for our delta stuff
     printf("setting up timer.\n");
     u64 now = SDL_GetPerformanceCounter();
@@ -172,9 +235,6 @@ static int eng_inner_loop(Application app, SDL_Window *window) {
         f64 real_delta = (double)(now - last) / (double)SDL_GetPerformanceFrequency();
         last = now;
 
-        // audio magic
-        cs_update(real_delta);
-
         // delta smoothing:
         deltas[delta_idx++] = real_delta;
         delta_len = max(delta_len, delta_idx);
@@ -191,7 +251,7 @@ static int eng_inner_loop(Application app, SDL_Window *window) {
                 event(ev, window);
 
             if (focused)
-                ENG_CALL_IF_VALID_LOOP(app.tick, delta)
+                ENG_CALL_IF_VALID(app.tick, delta)
 
             inp_update(delta);
 
@@ -208,7 +268,7 @@ static int eng_inner_loop(Application app, SDL_Window *window) {
                     event(ev, window);
 
                 if (focused)
-                    ENG_CALL_IF_VALID_LOOP(app.tick, timestep)
+                    ENG_CALL_IF_VALID(app.tick, timestep)
 
                 inp_update(timestep);
 
@@ -222,7 +282,7 @@ static int eng_inner_loop(Application app, SDL_Window *window) {
 
         }
 
-        ENG_CALL_IF_VALID_LOOP(app.frame, lag / timestep, delta)
+        ENG_CALL_IF_VALID(app.frame, lag / timestep, delta)
         
         if (!focused) {
             u16 w, h; 
@@ -237,84 +297,36 @@ static int eng_inner_loop(Application app, SDL_Window *window) {
         SDL_GL_SwapWindow(window);
     }
 
-    return 0;
-}
 
-int eng_main(Application app, const char *arg0) {
-    printf("hello world, i'm basket.\n");
+    general_error:
+    printf("byebye says the sensorial.\n");
+    inp_byebye();
+    inp_init_error:
 
-    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
+    printf("byebye says the music.\n");
+    aud_byebye();
+    aud_init_error:
 
-  	SDL_Window *window = SDL_CreateWindow(
-        "socks",
-  	    SDL_WINDOWPOS_UNDEFINED,
-        SDL_WINDOWPOS_UNDEFINED,
-  	    window_width, window_height,
-  	    SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE
-  	);
-
-    // filesystem.
-    if (fs_init(arg0))
-        return 1;
-
-    // renderer.
-    if (ren_init(window))
-        return 1;
-    
-    // audio.
-    printf("setting up audio.\n");
-    cs_init(NULL, 44100, 1024, NULL);
-    cs_spawn_mix_thread();
-
-    cs_set_global_volume(2.0);
-    if (getenv("BK_NO_VOLUME"))
-        cs_set_global_volume(0.0);
-
-    // input
-    inp_setup();
-
-    inp_register_scancode("w", INP_UP    ),
-    inp_register_scancode("s", INP_DOWN  ),
-    inp_register_scancode("a", INP_LEFT  ),
-    inp_register_scancode("d", INP_RIGHT ),
-
-    inp_register_scancode("j", INP_JUMP   ),
-    inp_register_scancode("k", INP_ATTACK ),
-    inp_register_scancode("l", INP_MENU   ),
-
-    inp_register_scancode("up",    INP_UP    ),
-    inp_register_scancode("down",  INP_DOWN  ),
-    inp_register_scancode("left",  INP_LEFT  ),
-    inp_register_scancode("right", INP_RIGHT ),
-
-    inp_register_scancode("z", INP_JUMP   ),
-    inp_register_scancode("x", INP_ATTACK ),
-    inp_register_scancode("c", INP_MENU   ),
-
-    // sigh...
-    inp_register_scancode("space", INP_JUMP);
-
-    ret = 0;
-
-    ENG_CALL_IF_VALID(app.init)
-
-    if (!ret) {
-        ret = eng_inner_loop(app, window);
-    }
-
+    printf("byebye says the construct.\n");
     ren_byebye();
+    ren_init_error:
+    fs_init_error:
+
+    if (app.close)
+        ret = app.close(ret);
+
+    const char *msg = eng_error_string(ret);
+    if (msg != NULL)
+        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "ERROR", msg, window);
+
     printf("byebye says the window.\n");
     SDL_DestroyWindow(window);
-
-    printf("byebreturn retye says the music.\n");
-    cs_shutdown();
 
     printf("byebye says the world.\n");
     SDL_Quit();
 
     printf("the end.\n");
 
-    ENG_CALL_IF_VALID(app.close)
 
     return ret;
 }

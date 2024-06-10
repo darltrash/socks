@@ -5,22 +5,8 @@
 extern "C" {
 #endif
 
-#ifndef AL_API
- #if defined(AL_LIBTYPE_STATIC)
-  #define AL_API
- #elif defined(_WIN32)
-  #define AL_API __declspec(dllimport)
- #else
-  #define AL_API extern
- #endif
-#endif
-
-#if defined(_WIN32)
- #define AL_APIENTRY __cdecl
-#else
- #define AL_APIENTRY
-#endif
-
+#define AL_API
+#define AL_APIENTRY
 
 /** Deprecated macro. */
 #define OPENAL

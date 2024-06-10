@@ -3,6 +3,7 @@ local vec3 = require "lib.vec3"
 local bump = require "lib.bump"
 local json = require "lib.json"
 local fam  = require "lib.fam"
+local bvh  = require "bvh"
 local player = require "player"
 
 local ui = require "ui"
@@ -11,8 +12,9 @@ local entities = require "entities"
 
 local state = {
     init = function (self, world)
-        eng.ambient(0x9582b0ff)
+        eng.ambient(0x19023dff)
         eng.far(60, 0x0c031aff)
+        eng.videomode(500, 400)
         --eng.dithering(false)
 
         self.colliders = bump.newWorld()
@@ -42,21 +44,36 @@ local state = {
 
         self.easter_time = 5
         self.easter_bunny = ""
-        self.easter_eggs = {
-            scrunge = function ()
-                self.scrunge = 255
-                eng.sound_play(assets.the_funny)
-            end
-        }
+        self.easter_eggs = {}
 
-        world = world or "assets/lvl_test.exm"
+        world = world or "assets/lvl_hometown.exm"
 
         self.world_mesh = assert (
             eng.load_model(world),
             "The idiot that wrote this game had a hard time adding the right path. ("..world..")"
         )
 
-        eng.music_play(assets.crocodile_music_for_their_non_existant_ears)
+        local vertex_format = "<fff"
+        local triangles = {}
+
+        for i=1, #self.world_mesh.data, 24 do
+            local p1x, p1y, p1z = string.unpack(vertex_format, self.world_mesh.data, i+00)
+            table.insert(triangles, p1x)
+            table.insert(triangles, p1y)
+            table.insert(triangles, p1z)
+        end
+
+        self.triangles = bvh.new(triangles)
+
+        eng.sound_play(assets.city, { looping = true })
+
+        eng.sound_play(assets.wereflying, { 
+            position = { -5, 2, -3 },
+            looping = true,
+            gain = 0.5
+        })
+
+        eng.orientation { -1, 0, 0 }
 
         self.colliders = bump.newWorld()
 
@@ -425,7 +442,33 @@ local state = {
             cam.instant = false
 
             eng.camera(cam.lerped, cam.target)
+
+            eng.listener(cam.target)
+--
+--            local w, h = eng.size()
+--            local x, y = eng.mouse_position()
+--
+--            local r = vec3.normalize { -1, 0, 0 }
+--
+--            local triangles = self.triangles:intersectRay(eye, r)
+--
+--            for _, tri in ipairs(triangles) do
+--                local str = ""
+--
+--                str = str .. string.pack("<fffffBBBB", tri[1]+0.1, tri[2], tri[3], 0, 0, 255, 0, 0, 255)
+--                str = str .. string.pack("<fffffBBBB", tri[4]+0.1, tri[5], tri[6], 0, 0, 255, 0, 0, 255)
+--                str = str .. string.pack("<fffffBBBB", tri[7]+0.1, tri[8], tri[9], 0, 0, 255, 0, 0, 255)
+--                
+--                eng.render {
+--                    mesh = {
+--                        data = str,
+--                        length = 3
+--                    },
+--                    texture = { 0, 0, 1, 1 }
+--                }
+--            end
         end
+
 
         eng.render {
             mesh = self.world_mesh
@@ -434,14 +477,14 @@ local state = {
         if self.interactable then
             ---- 388, 500, 12, 12
             --eng.rect(-7, -7, 14, 14, 0xFFFFFFFF)
-            eng.quad({320, 464, 12, 12}, -12, 100, 0xFFFFFFFF, 2, 2)
+            eng.quad({400, 496, 12, 12}, -12, 100, 0xFFFFFFFF, 2, 2)
         end
 
         -- transition code
         local trans = self.transition
         if trans.ease == "in" then
             if not trans.a then
-                eng.sound_play(assets.transition_in, { volume = 0.5 })
+                eng.sound_play(assets.transition_in, { gain = 0.5 })
                 trans.a = 0
             end
 
@@ -452,7 +495,7 @@ local state = {
                 if trans.callback then
                     trans.callback()
                 end
-                eng.sound_play(assets.transition_out, { volume = 0.5 })
+                eng.sound_play(assets.transition_out, { gain = 0.5 })
             end
         end
 
@@ -500,10 +543,6 @@ local state = {
         eng.quad({416, 0, 16*6, 16*6}, -16*3, -16*3, {255, 255, 255, self.scrunge})
 
         self.scrunge = math.max(0, self.scrunge - delta * 300)
-
-        local x, y = eng.mouse_position()
-
-        eng.rect(x-4, y-4, 8, 8, 0xFF0000FF)
     end
 }
 

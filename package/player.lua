@@ -65,7 +65,7 @@ local function handle_jump(ent, world)
     if eng.input("jump")==1 then
         ent.double_jumped = not ent.on_floor
 
-        eng.sound_play(assets.jump, { volume = 0.6 })
+        eng.sound_play(assets.jump, { gain = 0.6 })
 
         ent.scale[3] = 0.7
         ent.texture = player_animation.jumping
@@ -242,6 +242,8 @@ return {
         ent.state = ent.state or "on_air"
         ent.id = "player"
         ent.tint = { 255, 255, 255, 255 }
+
+        ent.listener = true
     end,
 
     tick = function (ent, world)

@@ -23,11 +23,17 @@ static vec_t(InputBinding) bindings;
 
 static char text[32];
 
-void inp_setup() {
+int inp_init() {
     if (bindings.data) 
         vec_deinit(&bindings);
 
     vec_init(&bindings);
+
+    return 0;
+}
+
+void inp_byebye() {
+    vec_deinit(&bindings);
 }
 
 void inp_event(SDL_Event event) {

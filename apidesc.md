@@ -85,16 +85,21 @@ Sets the `u32` passed by pointer as `length` to the length of the file in bytes,
 
 Returns `NULL` if it was unable to find/read the file.
 
+> [!NOTE]
+> This function allocates memory, please free after using it.
+
 **Example:**
 ```c
 const char hello_world = fs_read("hello_world.txt", NULL);
 printf("hello_world.txt: %s\n", hello_world);
+free(hello_world);
 
 u32 length;
 const char image_data = fs_read("atlas.png", &length);
 
 Image image;
 img_init(&image, image_data, length);
+free(image_data);
 ```
 
 <br>
@@ -441,7 +446,7 @@ Unloads an [`Image`](#image), internally freeing `image->pixels`, and setting bo
     const char *inp_get_key(u8 button);
 
     #ifdef BASKET_INTERNAL
-        void inp_setup();
+        void inp_init();
         void inp_event(SDL_Event event);
         bool inp_update(f64 timestep);
     #endif

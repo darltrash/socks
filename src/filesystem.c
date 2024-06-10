@@ -32,7 +32,7 @@ int chdir_to_path(const char *exec_path) {
 #ifdef FS_STATIC_FILES
     #include "static.h"
 
-    const char *fs_read(const char *name, u32 *size) {
+   ·char *fs_read(const char *name, u32 *size) {
         //printf("reading file %s\n", name);
 
         u8 a = 0;
@@ -42,7 +42,7 @@ int chdir_to_path(const char *exec_path) {
                 if (size != NULL)
                     *size = fs_table[a].size; 
                 
-                return (char *)fs_table[a].data;
+                return strdup(fs_table[a].data);
             }
         } while (fs_table[++a].filename);
 
@@ -62,17 +62,19 @@ int chdir_to_path(const char *exec_path) {
         if (chdir_to_path(self))
             return 1;
 
-        if (chdir("package"))
-            return 0;
+        // If ./package/ is a valid directory we can CD into
+        if (!chdir("package"))
+            return 0;           // then we assume that's where the assets are
 
+        // Try loading a zip file at ./package.bsk
         zip = zip_open("package.bsk", 0, 'r');
         if (zip) 
-            return 0;
+            return 0; // If it loaded, then assume that's where the assets are
 
-        return 1;
+        return 1; // We couldn't find anything :/
     }
 
-    static const char *fs_read_zip(const char *name, u32 *size) {
+    static char *fs_read_zip(const char *name, u32 *size) {
         char *buffer = NULL;
         size_t length;
 
@@ -91,7 +93,7 @@ int chdir_to_path(const char *exec_path) {
         return buffer;
     }
 
-    static const char *fs_read_folder(const char *name, u32 *size) {
+    static char *fs_read_folder(const char *name, u32 *size) {
         printf("reading file %s\n", name);
 
         FILE *f = fopen(name, "rb");
@@ -114,7 +116,7 @@ int chdir_to_path(const char *exec_path) {
         return string;
     }
 
-    const char *fs_read(const char *name, u32 *size) {
+    char *fs_read(const char *name, u32 *size) {
         if (zip)
             return fs_read_zip(name, size);
 

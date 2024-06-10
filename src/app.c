@@ -7,42 +7,60 @@
 
 #include "basket.h"
 #include "minilua.h"
-#include "cute_sound.h"
 #include "stb_perlin.h"
 
 static lua_State *l;
 
 static void get_vector(f32 *out, int tableIndex, int len) {
-    if (!lua_istable(l, tableIndex)) {
-        luaL_error(l, "Argument must be a table");
-        return;
-    }
+    luaL_checktype(l, tableIndex, LUA_TTABLE);
 
     for (size_t i = 0; i < len; ++i) {
         lua_pushnumber(l, i+1);
         lua_gettable(l, tableIndex);
-
-        if (!lua_isnumber(l, -1)) {
-            luaL_error(l, "Field '%i' is not a number", i);
-            return;
-        }
-
-        out[i] = lua_tonumber(l, -1);
+        out[i] = luaL_checknumber(l, -1);
 
         lua_pop(l, 1);
     }
 }
 
+static int api_reload_tex() {
+    u32 length = 0;
+    static u8 main, lumos;
+    if (main)
+        ren_tex_free(main);
+
+    if (lumos)
+        ren_tex_free(lumos);
+
+    {
+        char *raw = fs_read("assets/tex_atlas.png", &length);
+        main = ren_tex_load(raw, length);
+        free(raw);
+    }
+
+    {
+        char *raw = fs_read("assets/tex_lumos.png", &length);
+        lumos = ren_tex_load(raw, length);
+        free(raw);
+    }
+
+    ren_tex_bind(main, lumos);
+
+    return 0;
+}
+
 // eng.read(filename) -> string?
 static int api_fs_read() {
     u32 size;
-    const char *str = fs_read(luaL_checkstring(l, 1), &size);
+    char *str = fs_read(luaL_checkstring(l, 1), &size);
 
     if (str == NULL) 
         lua_pushnil(l);
         
     else
         lua_pushlstring(l, str, size);
+
+    free(str);
 
     return 1;
 }
@@ -74,7 +92,7 @@ static int api_load_model() {
     const char *file = luaL_checkstring(l, 1);
 
     u32 size;
-    const char *str = fs_read(file, &size);
+    char *str = fs_read(file, &size);
 
     if (str == NULL) {
         luaL_error(l, "file doesnt exist, this one -> \"%s\"", file);
@@ -84,12 +102,12 @@ static int api_load_model() {
     Model model;
 
     if (mod_init(&model, str)) {
-        luaL_error(l, "could not load!");
+        luaL_error(l, "could not decode! are you sure this is valid data");
         return 0;
     }
 
+    free(str);
 
-    // TODO: Transform to a special metatype
     lua_newtable(l);
     lua_pushlstring(l, (void*)model.mesh.data, model.mesh.length * sizeof(Vertex));
     lua_setfield(l, -2, "data");
@@ -105,33 +123,52 @@ static int api_load_model() {
     return 1;
 }
 
-static int source_amount = 0;
-static cs_audio_source_t *sources[128];
 
 static int api_load_sound() {
+    Sound snd;
+
     const char *file = luaL_checkstring(l, 1);
 
     u32 size;
-    const char *str = fs_read(file, &size);
+    char *str = fs_read(file, &size);
 
     if (str == NULL) {
         luaL_error(l, "file doesnt exist, this one -> \"%s\"", file);
         return 0;
     }
-    
-    cs_error_t err;
-    cs_audio_source_t *source = cs_read_mem_ogg(str, size, &err);
-    if (source == NULL) {
-        luaL_error(l, "error loading source \"%s\" (%s)", file, cs_error_as_string(err));
+
+    Sound sound;
+    int err = aud_load_ogg(&snd, (u8 *)str, size, lua_toboolean(l, 2));
+
+    free(str);
+
+    if (err) {
+        luaL_error(l, "error loading source \"%s\"", file);
         return 0;
     }
 
-    lua_pushnumber(l, source_amount);
-
-    sources[source_amount++] = source;
+    lua_pushinteger(l, snd);
 
     return 1;
 }
+
+static int api_listener() {
+    f32 position[3];
+    get_vector(position, 1, 3);
+    aud_listener(position);
+    return 0;
+}
+
+static int api_orientation() {
+    f32 orientation[6];
+    get_vector(orientation, 1, 3);
+    orientation[3] = 0;
+    orientation[4] = 0;
+    orientation[5] = 1;
+    aud_orientation(orientation);
+    return 0;
+}
+
 
 static Color fetch_color(int a) {
     Color color = COLOR_WHITE;
@@ -200,10 +237,7 @@ static int api_render() {
 
     lua_getfield(l, 1, "model");
     if (!lua_isnil(l, -1)) {
-        if (!lua_istable(l, -1)) {
-            luaL_error(l, "'model' property must be a table");
-            return 0;
-        }
+        luaL_checktype(l, -1, LUA_TTABLE);
 
         for (int i=1; i <= 16; i++) {
             lua_pushinteger(l, i);
@@ -405,115 +439,91 @@ static int api_size() {
     return 2;
 }
 
-
-// eng.music_volume(volume)
-static int api_music_volume() {
-    cs_music_set_volume(lua_tonumber(l, 1));
-    return 0;
-}
-
-// eng.music_loop(loopś)
-static int api_music_loop() {
-    cs_music_set_loop(lua_toboolean(l, 1));
-    return 0;
-}
-
-// eng.music_crossfade(source, fade)
-static int api_music_crossfade() {
-    cs_audio_source_t *source = sources[lua_tointeger(l, 1)];
-    cs_music_crossfade(source, lua_tonumber(l, 2));
-    return 0;
-}
-
-
-// eng.music_switch(source, fade-in, fade-out)
-static int api_music_switch() {
-    cs_audio_source_t *source = sources[lua_tointeger(l, 1)];
-    cs_music_switch_to(source, lua_tonumber(l, 2), lua_tonumber(l, 3));
-    return 0;
-}
-
-// eng.music_play(source, fade-in)
-static int api_music_play() {
-    cs_audio_source_t *source = sources[lua_tointeger(l, 1)];
-    cs_music_play(source, lua_tonumber(l, 2));
-    return 0;
-}
-
-static int api_music_stop() {
-    f32 time = 0.0;
-    if (!lua_isnoneornil(l, 1))
-        time = lua_tonumber(l, 1);
-        
-    cs_music_stop(time);
-    return 0;
-}
-
 // eng.sound_play(source, params) -> sound
 static int api_sound_play() {
-    cs_audio_source_t *source = sources[lua_tointeger(l, 1)];
+    Sound snd = luaL_checkinteger(l, 1);
 
-    cs_sound_params_t params = cs_sound_params_default();
+    Source src;
+    if (aud_init_source(&src, snd)) {
+        luaL_error(l, "Could not initialize source.");
+        return 0;
+    }
+
     if (!lua_isnoneornil(l, 2)) {
         luaL_checktype(l, 2, LUA_TTABLE);
+            
+        static f32 v[3];
 
-        lua_getfield(l, 2, "paused");
+        //lua_getfield(l, 2, "paused");
+        //if (!lua_isnil(l, -1))
+        //    aud_pause(src, lua_toboolean(l, -1));
+        //lua_pop(l, 1);
+
+        lua_getfield(l, 2, "looping");
         if (!lua_isnil(l, -1))
-            params.paused = lua_toboolean(l, -1);
+            aud_set_looping(src, lua_toboolean(l, -1));
         lua_pop(l, 1);
 
-        lua_getfield(l, 2, "looped");
+        lua_getfield(l, 2, "gain");
         if (!lua_isnil(l, -1))
-            params.looped = lua_toboolean(l, -1);
+            aud_set_gain(src, luaL_checknumber(l, -1));
         lua_pop(l, 1);
 
-        lua_getfield(l, 2, "volume");
+        lua_getfield(l, 2, "area");
         if (!lua_isnil(l, -1))
-            params.volume = luaL_checknumber(l, -1);
+            aud_set_area(src, luaL_checknumber(l, -1));
         lua_pop(l, 1);
 
-        lua_getfield(l, 2, "pan");
+        lua_getfield(l, 2, "pitch");
         if (!lua_isnil(l, -1))
-            params.pan = luaL_checknumber(l, -1);
+            aud_set_pitch(src, luaL_checknumber(l, -1));
         lua_pop(l, 1);
 
-        lua_getfield(l, 2, "delay");
-        if (!lua_isnoneornil(l, -1))
-            params.delay = luaL_checknumber(l, -1);
+        lua_getfield(l, 2, "position");
+            if (!lua_isnil(l, -1)) {
+                for (size_t i = 0; i < 3; ++i) {
+                    lua_pushnumber(l, i+1);
+                    lua_gettable(l, -2);
+                    v[i] = luaL_checknumber(l, -1);
+
+                    lua_pop(l, 1);
+                }
+                aud_set_position(src, v);
+            }
+        lua_pop(l, 1);
+        
+        lua_getfield(l, 2, "velocity");
+            if (!lua_isnil(l, -1)) {
+                for (size_t i = 0; i < 3; ++i) {
+                    lua_pushnumber(l, i+1);
+                    lua_gettable(l, -2);
+                    v[i] = luaL_checknumber(l, -1);
+
+                    lua_pop(l, 1);
+                }
+                aud_set_velocity(src, v);
+            }
         lua_pop(l, 1);
     }
 
-    cs_playing_sound_t sound = cs_play_sound(source, params);
+    aud_play(src);
 
-    lua_pushinteger(l, sound.id);
+    lua_pushinteger(l, src);
     return 1;
 }
 
-static int api_sound_volume() {
-    cs_playing_sound_t sound = { luaL_checkinteger(l, 1) };
-
-    if (lua_isnoneornil(l, 2)) {
-        lua_pushnumber(l, cs_sound_get_volume(sound));
-        return 1;
-    }
-
-    f32 volume = lua_tonumber(l, 2);
-    cs_sound_set_volume(sound, volume);
-    lua_pushnumber(l, volume);
-    
+static int api_sound_gain() {
+    aud_set_gain(luaL_checkinteger(l, 1), luaL_checknumber(l, 2));    
     return 1;
 }
 
-// eng.sound_loop(source, pan)
-static int api_sound_pan() {
-    cs_playing_sound_t sound = { luaL_checkinteger(l, 1) };
-    cs_sound_set_pan(sound, lua_tonumber(l, 2));
-    return 0;
+static int api_sound_pitch() {
+    aud_set_pitch(luaL_checkinteger(l, 1), luaL_checknumber(l, 2));    
+    return 1;
 }
 
-static int api_sound_is_playing() {
-    cs_playing_sound_t sound = { luaL_checkinteger(l, 1) };
-    lua_pushboolean(l, cs_sound_is_active(sound));
+static int api_sound_area() {
+    aud_set_area(luaL_checkinteger(l, 1), luaL_checknumber(l, 2));    
     return 1;
 }
 
@@ -571,6 +581,7 @@ static int api_exit() {
 static const luaL_Reg registry[] = {
     { "read",       api_fs_read    },
 
+    { "reload_tex", api_reload_tex },
     { "videomode",  api_videomode  },
     { "camera",     api_camera     },
     { "load_model", api_load_model },
@@ -593,16 +604,18 @@ static const luaL_Reg registry[] = {
     { "size",               api_size               },
 
     { "load_sound",       api_load_sound       },
-    { "music_volume",     api_music_volume     },
-    { "music_loop",       api_music_loop       },
-    { "music_crossfade",  api_music_crossfade  },
-    { "music_stop",       api_music_stop       },
-    { "music_switch",     api_music_switch     },
-    { "music_play",       api_music_play       },
+    //{ "music_volume",     api_music_volume     },
+    //{ "music_loop",       api_music_loop       },
+    //{ "music_crossfade",  api_music_crossfade  },
+    //{ "music_stop",       api_music_stop       },
+    //{ "music_switch",     api_music_switch     },
+    //{ "music_play",       api_music_play       },
     { "sound_play",       api_sound_play       },
-    { "sound_volume",     api_sound_volume     },
-    { "sound_pan",        api_sound_pan        },
-    { "sound_is_playing", api_sound_is_playing },
+    //{ "sound_volume",     api_sound_volume     },
+    //{ "sound_pan",        api_sound_pan        },
+    //{ "sound_is_playing", api_sound_is_playing },
+    { "listener",         api_listener         },
+    { "orientation",      api_orientation      },
     
     { "perlin", api_perlin },
 
@@ -616,23 +629,13 @@ static const luaL_Reg registry[] = {
 };
 
 
-int init(void *userdata) {
-    luaL_loadstring(l, fs_read("boot.lua", NULL));
+static int init(void *userdata) {
+    char *boot_lua = fs_read("boot.lua", NULL);
+    luaL_loadstring(l, boot_lua);
     lua_call(l, 0, 0);
+    free(boot_lua);
 
-    u32 length = 0;
-    u8 main, lumos;
-    {
-        const char *raw = fs_read("assets/tex_atlas.png", &length);
-        main = ren_tex_load(raw, length);
-    }
-
-    {
-        const char *raw = fs_read("assets/tex_lumos.png", &length);
-        lumos = ren_tex_load(raw, length);
-    }
-
-    ren_tex_bind(main, lumos);
+    api_reload_tex();
 
 #ifdef TRASH_DEBUG
     eng_set_debug(true);
@@ -641,7 +644,7 @@ int init(void *userdata) {
     return false;
 }
 
-int tick(f64 timestep) {
+static int tick(f64 timestep) {
     lua_getglobal(l, "eng");
     lua_getfield(l, -1, "tick");
 
@@ -654,7 +657,7 @@ int tick(f64 timestep) {
     return result != LUA_OK;
 }
 
-int frame(f64 alpha, f64 delta) {
+static int frame(f64 alpha, f64 delta) {
     ren_log("\n// ENVIRONMENT //////");
 
     //lua_gc(l, LUA_GCCOLLECT, 0);
@@ -676,13 +679,20 @@ int frame(f64 alpha, f64 delta) {
     return result != LUA_OK;
 }
 
+static int close(int ret) {
+    lua_close(l);
+
+    return 0;
+}
+
 // TODO: Consider embedding the actual Lua library within this specific file, and
 //       to fully isolate the engine 
 
 Application app = {
     .init = init,
     .tick = tick,
-    .frame = frame
+    .frame = frame,
+    .close = close
 };
 
 int main(int argc, char *argv[]) {
@@ -728,9 +738,6 @@ int main(int argc, char *argv[]) {
     lua_setglobal(l, "eng");
 
     int o = eng_main(app, argv[0]);
-
-    if (l)
-        lua_close(l);
 
     return o;
 }

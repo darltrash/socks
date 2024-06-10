@@ -268,13 +268,11 @@ bool iqm_init(Model *map, const char *data) {
     char *exm = NULL;
 
     if (header.num_comment)
-        map->extra = (char *)data+header.ofs_comment;
+        map->extra = strdup(data+header.ofs_comment);
 
     map->mesh = (MeshSlice) {
         vertices, animdata, vertex_amount, box
     };
-
-    //free(vertices);
 
     return false;
 }
