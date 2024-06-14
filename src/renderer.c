@@ -291,9 +291,8 @@ int ren_init(SDL_Window *_window) {
 }
 
 f32 camera_target[3] = { 0.0f, 0.0f, 0.0f };
-void ren_camera(f32 from[3], f32 to[3]) {
-    const f32 up[3] = { 0.0f, 0.0f, 1.0f };
-    
+void ren_camera(f32 from[3], f32 to[3], f32 up[3]) {
+
     mat4_lookat(view_matrix, from, to, up);
     mat4_mulvec(camera_target, to, view_matrix);
 }

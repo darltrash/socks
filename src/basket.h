@@ -168,8 +168,9 @@ typedef int8_t  i8;
     void aud_set_pitch(Source audio, f32 pitch);
     void aud_set_area(Source audio, f32 distance);
     void aud_set_gain(Source audio, f32 gain);
+
     void aud_listener(f32 position[3]);
-    void aud_orientation(f32 orientation[6]);
+    void aud_orientation(f32 towards[3], f32 up[3]);
 
     void aud_gain(f32 volume);
     void aud_pause(bool pause);
@@ -265,7 +266,7 @@ typedef int8_t  i8;
     #define DEFAULT_QUAD (Quad){ { 0.0, 0.0 }, { 1.0, 1.0 }, { 0, 0, 0, 0 }, COLOR_WHITE }
     #define LIGHT_AMOUNT 32
 
-    void ren_camera(f32 from[3], f32 to[3]);
+    void ren_camera(f32 from[3], f32 to[3], f32 up[3]);
     void ren_log(const char *str, ...);
     RenderCall *ren_draw(RenderCall call);
     void ren_light(Light);

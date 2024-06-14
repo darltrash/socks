@@ -67,13 +67,7 @@ local state = {
 
         eng.sound_play(assets.city, { looping = true })
 
-        eng.sound_play(assets.wereflying, { 
-            position = { -5, 2, -3 },
-            looping = true,
-            gain = 0.5
-        })
-
-        eng.orientation { -1, 0, 0 }
+        eng.orientation({ -1, 0, 0 }, { 0, 0, 1 })
 
         self.colliders = bump.newWorld()
 
@@ -120,6 +114,17 @@ local state = {
     --                p[1], p[2], p[3], s[1], s[2], s[3]
     --            })
 
+            elseif area.type=="speaker" then
+                if area.tokens[2] then
+                    local src = ("assets/%s.ogg"):format(area.tokens[2])
+                    local snd = eng.load_sound(src, true)
+
+                    eng.sound_play(snd, {
+                        position = area.position,
+                        looping = true,
+                        gain = area.area * 0.5,
+                    })
+                end
             else
                 self:add_entity(area)
 
@@ -345,7 +350,7 @@ local state = {
             local has_collider_on_air = ent.collider and not ent.on_floor
             
 
-            if (has_collider_on_air or ent.floats) and not ent.no_shadow then
+--[[            if (has_collider_on_air or ent.floats) and not ent.no_shadow then
                 local MAX_SHADOW_DEPTH = 16
                 local RAY_THICKNESS = 0.06
                 local RAY_BIAS = 0.1
@@ -373,6 +378,36 @@ local state = {
 
                     eng.render {
                         model = mat4.from_translation(pos) * mat4.from_scale(dist),
+                        mesh = assets.shadow,
+                        tint = { 0, 0, 0, 180 }
+                    }
+                end
+            end
+]]
+        
+            if (has_collider_on_air or ent.floats) and not ent.no_shadow then
+                local triangles = self.triangles:intersectRay(p, {0, 0, -1})
+
+                if triangles[1] then
+                    table.sort(triangles, function (a, b)
+                        return a.t < b.t
+                    end)
+
+                    local t = triangles[1]
+
+                    local n = vec3.add(t.p, {0, 0, 0.1})
+
+                    local size = 0.7-(t.t/16)
+
+                    local m = fam.triangle_to_normal(
+                        {t[1], t[2], t[3]},
+                        {t[4], t[5], t[6]},
+                        {t[7], t[8], t[9]}
+                    )
+                    local e = fam.normal_to_euler(m)
+
+                    eng.render {
+                        model = mat4.from_transform(n, e, size),
                         mesh = assets.shadow,
                         tint = { 0, 0, 0, 180 }
                     }
@@ -441,7 +476,7 @@ local state = {
 
             cam.instant = false
 
-            eng.camera(cam.lerped, cam.target)
+            eng.camera(cam.lerped, cam.target, { 0, 0, 1 })
 
             eng.listener(cam.target)
 --

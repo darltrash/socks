@@ -105,38 +105,6 @@ local N = {}
 local AO = {}
 local DAO = {}
 
-local triangle_vs_ray = function (triangle, origin, towards)
-    A[1] = triangle[1]
-    A[2] = triangle[2]
-    A[3] = triangle[3]
-
-    B[1] = triangle[4]
-    B[2] = triangle[5]
-    B[3] = triangle[6]
-
-    C[1] = triangle[7]
-    C[2] = triangle[8]
-    C[3] = triangle[9]
-
-    vec3.sub(B, A, 3, E1)
-    vec3.sub(C, A, 3, E2)
-    vec3.cross(E1, E2, N)
-
-    local det = -vec3.dot(towards, N)
-    vec3.sub(origin, A, 3, AO)
-    vec3.cross(AO, towards, DAO)
-
-    local u =  vec3.dot(E2, DAO) * (1 / det)
-    local v = -vec3.dot(E1, DAO) * (1 / det)
-    local t =  vec3.dot(AO, N)   * (1 / det)
-
-    return
-        (det >= 1e-6)
-        and (t >= 0) and (u >= 0)
-        and (v >= 0) and ((u+v) <= 1)
-        and t
-end
-
 local function ray_triangle(triangle, origin, direction, backface_cull)
     A[1] = triangle[1]
     A[2] = triangle[2]
@@ -247,7 +215,14 @@ function BVH:intersectRay(rayOrigin, rayDirection, backfaceCulling)
 		local t = ray_triangle(triangle, rayOrigin, rayDirection)
 
 		if t then
-			table.insert(intersectingTriangles, { t = t, table.unpack(triangle) })
+			table.insert(intersectingTriangles, { 
+				triangle[1], triangle[2], triangle[3],
+				triangle[4], triangle[5], triangle[6],
+				triangle[7], triangle[8], triangle[9],
+				
+				t = t,
+				p = vec3.add(rayOrigin, vec3.mul_val(rayDirection, t))
+			})
 		end
 	end
 

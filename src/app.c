@@ -79,10 +79,12 @@ static int api_videomode() {
 static int api_camera() {
     f32 a[3];
     f32 b[3];
+    f32 c[3];
     get_vector(a, 1, 3);
     get_vector(b, 2, 3);
+    get_vector(c, 3, 3);
 
-    ren_camera(a, b);
+    ren_camera(a, b, c);
 
     return 0;
 }
@@ -161,11 +163,11 @@ static int api_listener() {
 
 static int api_orientation() {
     f32 orientation[6];
+    f32 up[6];
     get_vector(orientation, 1, 3);
-    orientation[3] = 0;
-    orientation[4] = 0;
-    orientation[5] = 1;
-    aud_orientation(orientation);
+    get_vector(up, 2, 3);
+
+    aud_orientation(orientation, up);
     return 0;
 }
 

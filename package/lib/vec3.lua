@@ -75,15 +75,20 @@ vec3.dot = function(a, b)
 	return sum
 end
 
-vec3.length = function (a)
+vec3.length2 = function (a)
     local e = 0
 
     for x=1, #a do
         e = e + a[x]*a[x]
     end
     
-	return math.sqrt(e)
+	return e
 end
+
+vec3.length = function (a)
+	return math.sqrt(vec3.length2(a))
+end
+
 
 vec3.distance = function (a, b, len)
     return vec3.length(vec3.sub(a, b, len))

@@ -73,7 +73,7 @@ eng.set_room {
                 )
             )
 
-            eng.camera(eye, target)
+            eng.camera(eye, target, {0, 0, 1})
         end
 
         for _, light in ipairs(lights) do

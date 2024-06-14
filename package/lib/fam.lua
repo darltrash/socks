@@ -182,4 +182,33 @@ fam.inv_square = function (value)
     return 1-(fam.clamp(1-value, 0, 1)^2)
 end
 
+fam.triangle_to_normal = function (p1, p2, p3)
+    local a_x = p2[1] - p1[1]
+    local a_y = p2[2] - p1[2]
+    local a_z = p2[3] - p1[3]
+    
+    local b_x = p3[1] - p1[1]
+    local b_y = p3[2] - p1[2]
+    local b_z = p3[3] - p1[3]
+    
+    return {
+        a_y * b_z - a_z * b_y,
+        a_z * b_x - a_x * b_z,
+        a_x * b_y - a_y * b_x
+    }
+end
+
+fam.normal_to_euler = function (a)
+    local x, y, z = a[1], a[2], a[3]
+    
+    -- Calculate yaw (rotation around the y-axis)
+    local yaw = math.atan(x, z)
+
+    -- Calculate pitch (rotation around the x-axis)
+    local hypotenuse = math.sqrt(x * x + z * z)
+    local pitch = math.atan(-y, hypotenuse)
+
+    return { pitch, yaw, 0 }
+end
+
 return fam

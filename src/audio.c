@@ -114,7 +114,12 @@ void aud_listener(f32 position[3]) {
     alListener3f(AL_POSITION, position[0], position[1], position[2]);
 }
 
-void aud_orientation(f32 orientation[6]) {
+void aud_orientation(f32 towards[3], f32 up[3]) {
+    f32 orientation[6] = { 
+        towards[0], towards[1], towards[2], 
+        up[0], up[1], up[2] 
+    };
+    
     alListenerfv(AL_ORIENTATION, orientation);
 }
 
