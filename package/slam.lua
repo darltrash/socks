@@ -33,54 +33,111 @@
 
     Please read https://github.com/darltrash/lumi/blob/main/docs/slam.md
     to get a better knowledge of what this can and cannot do
+
+    CHANGELOG:
+        - Removed lumi.vec3 dependency
+        - Cleaned up the code
+        - Fixed an internal bug
 ]]
 
-local vec3   = require("lib.vec3")
 local slam = {}
+
 
 local clamp = function(a, min, max)
     return math.max(min, math.min(max, a))
 end
 
+local vec3_sub = function (a, b)
+    return {
+        a[1] - b[1],
+        a[2] - b[2],
+        a[3] - b[3],
+    }
+end
+
+local vec3_add = function (a, b)
+    return {
+        a[1] + b[1],
+        a[2] + b[2],
+        a[3] + b[3],
+    }
+end
+
+local vec3_mul = function (a, b)
+    return {
+        a[1] + b[1],
+        a[2] + b[2],
+        a[3] + b[3],
+    }
+end
+
+local vec3_div = function (a, b)
+    return {
+        a[1] / b[1],
+        a[2] / b[2],
+        a[3] / b[3],
+    }
+end
+
+local vec3_inverse = function (a)
+    return {
+        1 / a[1],
+        1 / a[2],
+        1 / a[3],
+    }
+end
+
+local vec3_cross = function (a, b)
+    return {
+        a[2] * b[3] - a[3] * b[2],
+        a[3] * b[1] - a[1] * b[3],
+        a[1] * b[2] - a[2] * b[1]
+    }
+end
+
+local vec3_dot = function(a, b)
+	return a[1] * b[1] + a[2] * b[2] + a[3] * b[3]
+end
+
+local vec3_length2 = function (a)
+    return a[1]^2 + a[2]^2 + a[3]^2
+end
+
+local vec3_length = function (a)
+	return math.sqrt(vec3_length2(a))
+end
+
+local vec3_scale = function(a, b)
+	return {
+        a[1] * b,
+        a[2] * b,
+        a[3] * b
+    }
+end
+
+local vec3_normalize = function (a)
+    local l = vec3_length(a)
+
+    if l == 0 then
+        return {0, 0, 0}
+    end
+
+    return {
+        a[1] / l,
+        a[2] / l,
+        a[3] / l,
+    }
+end
+
+local vec3_copy = function (a)
+    return { table.unpack(a) }
+end
+
+
 local signed_distance = function(plane, base)
-    local d = -vec3.dot(plane.normal, plane.position)
-    return vec3.dot(base, plane.normal) + d
+    local d = -vec3_dot(plane.normal, plane.position)
+    return vec3_dot(base, plane.normal) + d
 end
-
-local swap = function(a, b)
-    return b, a
-end
-
-
-local u, v, w = {}, {}, {}
-local vw, vu = {}, {}
-local uw, uv = {}, {}
-slam.triangle_intersects_point = function(point, v0, v1, v2)
-    vec3.sub(v1, v0, u)
-    vec3.sub(v2, v0, v)
-    vec3.sub(point, v0, w)
-
-    vec3.cross(v, w, vw)
-    vec3.cross(v, u, vu)
-
-    if (vec3.dot(vw, vu) < 0) then
-        return false
-    end
-
-    vec3.cross(u, w, uw)
-    vec3.cross(u, v, uv)
-
-    if (vec3.dot(uw, uv) < 0) then
-        return false
-    end
-
-    local d = 1 / vec3.length(uv)
-    local r = vec3.length(vw) * d
-    local t = vec3.length(uw) * d
-
-    return (r + t) <= 1
-end
-
 
 local get_lowest_root = function(a, b, c, max)
     local determinant = b * b - 4 * a * c
@@ -94,7 +151,9 @@ local get_lowest_root = function(a, b, c, max)
     local r2 = (-b + sqrtd) / (2 * a)
 
     if (r1 > r2) then -- perform swap
-        r1, r2 = swap(r1, r2)
+        local tmp = r2
+        r2 = r1
+        r1 = tmp
     end
 
     if (r1 > 0 and r1 < max) then
@@ -108,32 +167,54 @@ local get_lowest_root = function(a, b, c, max)
     return false
 end
 
-local plane_intersect = {}
-local plane_normal = {}
-local ba, ca = {}, {}
+
+slam.triangle_intersects_point = function(point, v0, v1, v2)
+    local u = vec3_sub(v1, v0)
+    local v = vec3_sub(v2, v0)
+    local w = vec3_sub(point, v0)
+
+    local vw = vec3_cross(v, w)
+    local vu = vec3_cross(v, u)
+
+    if (vec3_dot(vw, vu) < 0) then
+        return false
+    end
+
+    local uw = vec3_cross(u, w)
+    local uv = vec3_cross(u, v)
+
+    if (vec3_dot(uw, uv) < 0) then
+        return false
+    end
+
+    local d = 1 / vec3_length(uv)
+    local r = vec3_length(vw) * d
+    local t = vec3_length(uw) * d
+
+    return (r + t) <= 1
+end
+
 local check_triangle = function(packet, p1, p2, p3, id)
-    vec3.sub(p2, p1, ba)
-    vec3.sub(p3, p1, ca)
-    vec3.normalize(vec3.cross(ba, ca), plane_normal)
+    local plane_normal = vec3_normalize(vec3_cross(vec3_sub(p2, p1), vec3_sub(p3, p1)))
 
     --  // only check front facing triangles
-    --	if (vec3.dot(pn, packet.e_norm_velocity) > 0.0) {
+    --	if (vec3_dot(pn, packet.e_norm_velocity) > 0.0) {
     --		//return packet;
     --	}
 
     local t0 = 0
     local embedded_in_plane = false
 
-    local signed_dist_to_plane = vec3.dot(packet.e_base_point, plane_normal) - vec3.dot(plane_normal, p1)
-    local normal_dot_vel = vec3.dot(plane_normal, packet.e_velocity)
+    local signed_dist_to_plane = vec3_dot(packet.e_base_point, plane_normal) - vec3_dot(plane_normal, p1)
+    local normal_dot_vel = vec3_dot(plane_normal, packet.e_velocity)
 
     if normal_dot_vel == 0 then
-        embedded_in_plane = true
-        t0 = 0
-
         if math.abs(signed_dist_to_plane) >= 1 then
             return packet
         end
+
+        t0 = 0
+        embedded_in_plane = true
     else
         local nvi = 1 / normal_dot_vel
 
@@ -141,7 +222,9 @@ local check_triangle = function(packet, p1, p2, p3, id)
         local t1 = (1 - signed_dist_to_plane) * nvi
 
         if (t0 > t1) then
-            t0, t1 = swap(t0, t1)
+            local tmp = t1
+            t1 = t0
+            t0 = tmp
         end
 
         if (t0 > 1 or t1 < 0) then
@@ -156,9 +239,9 @@ local check_triangle = function(packet, p1, p2, p3, id)
     local t = 1
 
     if not embedded_in_plane then
-        vec3.sub(packet.e_base_point, plane_normal, plane_intersect)
-        local temp = packet.e_velocity * t0
-        vec3.add(plane_intersect, temp, plane_intersect)
+        local plane_intersect = vec3_sub(packet.e_base_point, plane_normal)
+        local temp = vec3_scale(packet.e_velocity, t0)
+        plane_intersect = vec3_add(plane_intersect, temp)
 
         if slam.triangle_intersects_point(plane_intersect, p1, p2, p3) then
             found_collision = true
@@ -168,65 +251,70 @@ local check_triangle = function(packet, p1, p2, p3, id)
     end
 
     if not found_collision then
-        local velocity_sq_length = vec3.length2(packet.e_velocity)
+        local velocity_sq_length = vec3_length2(packet.e_velocity)
         local a = velocity_sq_length
 
-        -- TODO: CHECK IF FUCKED
-        local function check_point(p)
-            local b = 2 * vec3.dot(packet.e_velocity, packet.e_base_point - p)
-            local c = vec3.length2(p - packet.e_base_point) - 1
+        local function check_point(collision_point, p)
+            local b = 2 * vec3_dot(packet.e_velocity, vec3_sub(packet.e_base_point, p))
+            local c = vec3_length2(vec3_sub(p, packet.e_base_point)) - 1
 
             local new_t = get_lowest_root(a, b, c, t)
 
             if new_t then
                 t = new_t
                 found_collision = true
-                return p
+                collision_point = p
             end
+
+            return collision_point
         end
 
-        collision_point =
-            check_point(p1) or
-            check_point(p2) or
-            check_point(p3) or
-            collision_point
+        collision_point = check_point(collision_point, p1)
+        if not found_collision then
+            collision_point = check_point(collision_point, p2)
+        end
 
-        local function check_edge(pa, pb)
-            local edge = vec3.sub(pb, pa)
-            local base_to_vertex = vec3.sub(pa, packet.e_base_point)
+        if not found_collision then
+            collision_point = check_point(collision_point, p3)
+        end
 
-            local edge_sq_length = vec3.length2(edge)
-            local edge_dot_velocity = vec3.dot(edge, packet.e_velocity)
-            local edge_dot_base_to_vertex = vec3.dot(edge, base_to_vertex)
+        local function check_edge(collision_point, pa, pb)
+            local edge = vec3_sub(pb, pa)
+            local base_to_vertex = vec3_sub(pa, packet.e_base_point)
+
+            local edge_sq_length = vec3_length2(edge)
+            local edge_dot_velocity = vec3_dot(edge, packet.e_velocity)
+            local edge_dot_base_to_vertex = vec3_dot(edge, base_to_vertex)
 
             local a = edge_sq_length * -velocity_sq_length + edge_dot_velocity * edge_dot_velocity
 
-            local b = edge_sq_length * (2.0 * vec3.dot(packet.e_velocity, base_to_vertex)) -
+            local b = edge_sq_length * (2.0 * vec3_dot(packet.e_velocity, base_to_vertex)) -
                 2.0 * edge_dot_velocity * edge_dot_base_to_vertex
 
-            local c = edge_sq_length * (1.0 - vec3.length2(base_to_vertex)) +
+            local c = edge_sq_length * (1.0 - vec3_length2(base_to_vertex)) +
                 edge_dot_base_to_vertex * edge_dot_base_to_vertex;
 
             local new_t = get_lowest_root(a, b, c, t)
+
             if new_t then
                 local f = (edge_dot_velocity * new_t - edge_dot_base_to_vertex) / edge_sq_length
                 if (f >= 0 and f <= 1) then
                     t = new_t
                     found_collision = true
-                    return pa + (edge * f)
+                    collision_point = vec3_add(pa, vec3_scale(edge, f))
                 end
             end
+
+            return collision_point
         end
 
-        collision_point =
-            check_edge(p1, p2) or
-            check_edge(p2, p3) or
-            check_edge(p3, p1) or
-            collision_point
+        collision_point = check_edge(collision_point, p1, p2)
+        collision_point = check_edge(collision_point, p2, p3)
+        collision_point = check_edge(collision_point, p3, p1)
     end
 
     if found_collision then
-        local dist_to_coll = t * vec3.length(packet.e_velocity)
+        local dist_to_coll = t * vec3_length(packet.e_velocity)
 
         if (not packet.found_collision or dist_to_coll < packet.nearest_distance) then
             packet.nearest_distance = dist_to_coll
@@ -240,81 +328,75 @@ local check_triangle = function(packet, p1, p2, p3, id)
     return packet
 end
 
-local check_collision = function(packet, triangles, ids)
-    local inv_radius = packet.e_inv_radius
-
-    for index, triangle in ipairs(triangles) do
-        local v0 = triangle[1]
-        local v1 = triangle[2]
-        local v2 = triangle[3]
-
-        check_triangle(
-            packet,
-            vec3.mul(v0, inv_radius),
-            vec3.mul(v1, inv_radius),
-            vec3.mul(v2, inv_radius),
-            ids and ids[index] or 0
-        )
-    end
-end
-
 -- This implements the improvements to Kasper Fauerby's "Improved Collision
 -- detection and Response" proposed by Jeff Linahan's "Improving the Numerical
 -- Robustness of Sphere Swept Collision Detection"
-local VERY_CLOSE_DIST = 0.00125
+local VERY_CLOSE_DIST = 0.000125
 
 slam.collide_with_world = function(packet, position, velocity, triangles, ids)
     local first_plane
-    local dest = position + velocity
+    local dest = vec3_add(position, velocity)
     local speed = 1
 
     for i = 1, 3 do
-        packet.e_norm_velocity = vec3.normalize(velocity)
-        packet.e_velocity = vec3.copy(velocity)
-        packet.e_base_point = vec3.copy(position)
+        packet.e_velocity = vec3_copy(velocity)
+        packet.e_base_point = vec3_copy(position)
         packet.found_collision = false
         packet.nearest_distance = 1e20
 
-        check_collision(packet, triangles, ids)
+        for index, triangle in ipairs(triangles) do
+            check_triangle(
+                packet,
+                vec3_div(triangle[1], packet.e_radius),
+                vec3_div(triangle[2], packet.e_radius),
+                vec3_div(triangle[3], packet.e_radius),
+                ids and ids[index] or 0
+            )
+        end
 
         if not packet.found_collision then
             return dest
         end
 
-        local touch_point = vec3.add(position, vec3.mul_val(velocity, packet.intersect_time))
+        local touch_point = vec3_add(position, vec3_scale(velocity, packet.intersect_time))
 
-        local pn = vec3.normalize(vec3.sub(touch_point, packet.intersect_point))
+        local pn = vec3_normalize(vec3_sub(touch_point, packet.intersect_point))
         local p = {
             position = packet.intersect_point,
             normal = pn
         }
-        local n = vec3.normalize(vec3.mul(p.normal, packet.e_radius))
+        local n = vec3_normalize(vec3_div(p.normal, packet.e_radius))
 
-        local dist = vec3.length(velocity) * packet.intersect_time
+        local dist = vec3_length(velocity) * packet.intersect_time
         local short_dist = math.max(dist - speed * VERY_CLOSE_DIST, 0)
-        local nvel = vec3.normalize(velocity)
-        vec3.add(position, vec3.mul_val(nvel, short_dist), position)
+        local nvel = vec3_normalize(velocity)
+        position = vec3_add(position, vec3_scale(nvel, short_dist))
 
         table.insert(packet.contacts, {
             id = packet.id,
-            position = vec3.mul(p.position, packet.e_radius),
+            position = vec3_mul(p.position, packet.e_radius),
             normal = n,
-            near = packet.intersect_time
+            t = packet.intersect_time
         })
 
         if i == 1 then
             local long_radius = 1 + speed * VERY_CLOSE_DIST
             first_plane = p
 
-            vec3.sub(dest, vec3.mul_val(first_plane.normal, signed_distance(first_plane, dest) - long_radius), dest)
-            velocity = vec3.sub(dest, position)
+            dest = vec3_sub(dest,
+                vec3_scale(
+                    first_plane.normal,
+                    signed_distance(first_plane, dest) - long_radius
+                )
+            )
+            velocity = vec3_sub(dest, position)
 
         elseif i == 2 and first_plane then
             local second_plane = p
-            local crease = vec3.normalize(vec3.cross(first_plane.normal, second_plane.normal))
-            local dis = vec3.dot(vec3.sub(dest, position), crease)
-            velocity = vec3.add_val(crease, -dis)
-            dest = vec3.add(position, velocity)
+            local crease = vec3_normalize(vec3_cross(first_plane.normal, second_plane.normal))
+            local dis = vec3_dot(vec3_sub(dest, position), crease)
+            velocity = vec3_scale(crease, dis)
+            dest = vec3_add(position, velocity)
 
         end
     end
@@ -322,73 +404,62 @@ slam.collide_with_world = function(packet, position, velocity, triangles, ids)
     return position
 end
 
-local function get_tris(position, velocity, radius, query, data)
-    local scale = math.max(1.5, vec3.length(velocity)) * 1.25
+local get_tris = function (position, velocity, radius, query)
+    local scale = math.max(1.5, vec3_length(velocity)) * 1.25
     local r3_position = position
-    local query_radius = radius * scale
-    local min = r3_position - query_radius
-    local max = r3_position + query_radius
+    local query_radius = vec3_scale(radius, scale)
+    local min = vec3_sub(r3_position, query_radius)
+    local max = vec3_add(r3_position, query_radius)
 
-    return query(min, max, velocity, data)
-end
-
-local function sub_update(packet, position, triangles, ids)
-    packet.e_velocity = packet.e_velocity * 0.5
-
-    local e_position = vec3.copy(packet.e_position)
-    local e_velocity = vec3.copy(packet.e_velocity)
-
-    local final_position = slam.collide_with_world(packet, e_position, e_velocity, triangles, ids)
-
-    packet.r3_position = final_position * packet.e_radius
-    packet.r3_velocity = packet.r3_position - position
+    return query(min, max)
 end
 
 -- query must be function(min, max, velocity)->triangles,id?
 -- returns position, velocity, contacts (as planes)
-slam.check = function(position, velocity, radius, query, substeps, data)
+slam.check = function(position, velocity, radius, query, substeps)
     substeps = substeps or 1
-    velocity = vec3.div(velocity, substeps)
 
-    local _q = query
-    if type(query) == "table" then
-        query = function()
-            return _q
-        end
+    if tonumber(radius) then
+        radius = {radius, radius, radius}
     end
 
-    local tri_cache, id_cache = get_tris(position, velocity, radius, query, data)
+    local tri_cache, id_cache = get_tris(position, velocity, radius, query)
+    
+    local packet = {
+        r3_position  = position,
+        r3_velocity  = vec3_scale(velocity, 1/substeps),
 
-    local base = position
-    local contacts = {}
+        e_radius     = radius,
+        e_position   = vec3_div(position, radius),
+
+        contacts     = {}
+    }
+
     for i = 1, substeps do
-        local inv_r = 1 / radius
+        packet.e_velocity   = vec3_div(packet.r3_velocity, packet.e_radius)
+        packet.e_base_point = { 0, 0, 0 }
 
-        local packet = {
-            r3_position      = position,
-            r3_velocity      = velocity,
-            e_radius         = radius,
-            e_inv_radius     = {inv_r, inv_r, inv_r},
-            e_position       = vec3.mul_val(position, radius),
-            e_velocity       = vec3.mul_val(velocity, radius),
-            e_norm_velocity  = {0, 0, 0},
-            e_base_point     = {0, 0, 0},
-            found_collision  = false,
-            nearest_distance = 0,
-            intersect_point  = {0, 0, 0},
-            intersect_time   = 0,
-            id               = 0,
-            contacts         = contacts
-        }
+        packet.found_collision  = false
+        packet.intersect_point  = { 0, 0, 0 }
+        packet.intersect_time   = 0
+        packet.nearest_distance = 0
+        packet.id               = 0
 
-        sub_update(packet, packet.r3_position, tri_cache, id_cache)
-        
-        position = packet.r3_position
-        velocity = packet.r3_velocity
+        packet.e_position = slam.collide_with_world (
+            packet,
+            packet.e_position,
+            packet.e_velocity,
+            tri_cache,
+            id_cache
+        )
+    
+        packet.r3_position = vec3_mul(packet.e_position, packet.e_radius)
+        packet.r3_velocity = vec3_sub(packet.r3_position, position)
     end
 
-    return position, position - base, contacts
+    return packet.r3_position, packet.r3_velocity, packet.contacts
 end
+
 slam.__call = slam.check
 
 return setmetatable(slam, slam)

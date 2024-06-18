@@ -5,10 +5,15 @@ local json = require "lib.json"
 local fam  = require "lib.fam"
 local bvh  = require "bvh"
 local player = require "player"
+local slam = require "slam"
 
 local ui = require "ui"
 local assets = require "assets"
 local entities = require "entities"
+
+local balls = {}
+
+require "material"
 
 local state = {
     init = function (self, world)
@@ -204,7 +209,31 @@ local state = {
 
         self.interactable = false
 
+        local f = function (min, max)
+            return self.triangles:intersectAABB({min = min, max = max})
+        end
+
         local p = self.entities.map.player
+
+--        if eng.input("menu")==1 then
+--            table.insert(balls, {
+--                position = vec3.add(p.position, {0, 0, 4}),
+--                velocity = {0, 0, 0.0}
+--            })
+--        end
+--
+--        for _, ball in ipairs(balls) do
+--            local _, planes
+--            ball.position, _, planes = slam.check(ball.position, ball.velocity, 0.5, f)
+--
+--            print(table.unpack(ball.position))
+--
+--            ball.velocity = vec3.add(ball.velocity, { 0, 0, -0.05 })
+--
+--            for _, c in ipairs(planes) do
+--                ball.velocity = vec3.mul_val(c.normal, vec3.length(ball.velocity) * 0.8)
+--            end
+--        end
 
         for x=#self.entities, 1, -1 do
             local ent = self.entities[x]
@@ -399,11 +428,7 @@ local state = {
 
                     local size = 0.7-(t.t/16)
 
-                    local m = fam.triangle_to_normal(
-                        {t[1], t[2], t[3]},
-                        {t[4], t[5], t[6]},
-                        {t[7], t[8], t[9]}
-                    )
+                    local m = fam.triangle_to_normal(table.unpack(t))
                     local e = fam.normal_to_euler(m)
 
                     eng.render {
@@ -508,6 +533,14 @@ local state = {
         eng.render {
             mesh = self.world_mesh
         }
+
+        for _, ball in ipairs(balls) do
+            eng.render {
+                mesh = assets.sphere,
+                texture = { 0, 0, 1, 1 },
+                model = mat4.from_transform(ball.position, {eng.timer*0.1, eng.timer*0.2, eng.timer*0.3}, 0.5),
+            }
+        end
 
         if self.interactable then
             ---- 388, 500, 12, 12

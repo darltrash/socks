@@ -5,6 +5,7 @@ return {
     fan = eng.load_model("assets/mod_fan.exm"),
     switch = eng.load_model("assets/mod_switch.exm"),
     lock = eng.load_model("assets/mod_lock.exm"),
+    sphere = eng.load_model("assets/mod_sphere.exm"),
 
     the_funny = eng.load_sound("assets/snd_boom.ogg"),
     jump = eng.load_sound("assets/snd_jump.ogg"),

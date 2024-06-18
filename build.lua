@@ -79,7 +79,7 @@ local function compile(setup)
         setup.cc = "ccache " .. setup.cc
     end
 
-    local k = "-Ilib/ -Wstringop-overflow=0 -D_POSIX_C_SOURCE=200809L --std=c99 -DTHING_COMMIT='\""..commit.."\"' "
+    local k = "-Ilib/ -Wstringop-overflow=0 -D_POSIX_C_SOURCE=200809L --std=c99 -DBASKET_COMMIT='\""..commit.."\"' "
         .. (setup.file_flags or "")
     
     local optimizations = "-fdata-sections -ffunction-sections -Wl,--gc-sections"

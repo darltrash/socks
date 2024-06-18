@@ -38,7 +38,24 @@ local function new(triangles, maxTrianglesPerNode)
 	return tree
 end
 
---[[
+local function aabb_vs_aabb(box1, box2)
+    -- Check if there is no overlap in the x, y, and z axes
+    if box1.max[1] < box2.min[1] or box1.min[1] > box2.max[1] then
+        return false
+    end
+
+    if box1.max[2] < box2.min[2] or box1.min[2] > box2.max[2] then
+        return false
+    end
+
+    if box1.max[3] < box2.min[3] or box1.min[3] > box2.max[3] then
+        return false
+    end
+
+    -- If none of the above conditions are met, the boxes intersect
+    return true
+end
+
 function BVH:intersectAABB(aabb)
 	local nodesToIntersect             = { self._rootNode }
 	local trianglesInIntersectingNodes = {} -- a list of nodes that intersect the ray (according to their bounding box)
@@ -54,7 +71,7 @@ function BVH:intersectAABB(aabb)
 			max = node._extentsMax
 		}
 
-		if intersect.aabb_aabb(aabb, node_aabb) then
+		if aabb_vs_aabb(aabb, node_aabb) then
 			if node._node0 then
 				table.insert(nodesToIntersect, node._node0)
 			end
@@ -69,32 +86,34 @@ function BVH:intersectAABB(aabb)
 		end
 	end
 
-	-- insert all node triangles, don't bother being more specific yet.
-	local triangle = { {0, 0, 0}, {0, 0, 0}, {0, 0, 0} }
-
 	for i=1, #trianglesInIntersectingNodes do
 		local triIndex = trianglesInIntersectingNodes[i]
 
-		-- print(triIndex, #self._trianglesArray)
-		triangle[1] = self._trianglesArray[1+(triIndex-1)*9]
-		triangle[2] = self._trianglesArray[1+(triIndex-1)*9+1]
-		triangle[3] = self._trianglesArray[1+(triIndex-1)*9+2]
-		triangle[4] = self._trianglesArray[1+(triIndex-1)*9+3]
-		triangle[5] = self._trianglesArray[1+(triIndex-1)*9+4]
-		triangle[6] = self._trianglesArray[1+(triIndex-1)*9+5]
-		triangle[7] = self._trianglesArray[1+(triIndex-1)*9+6]
-		triangle[8] = self._trianglesArray[1+(triIndex-1)*9+7]
-		triangle[9] = self._trianglesArray[1+(triIndex-1)*9+8]
-
 		table.insert(intersectingTriangles, {
-			triangle             = { triangle[1]:clone(), triangle[2]:clone(), triangle[3]:clone() },
-			triangleIndex        = triIndex
+			{
+				self._trianglesArray[1+(triIndex-1)*9],
+				self._trianglesArray[1+(triIndex-1)*9+1],
+				self._trianglesArray[1+(triIndex-1)*9+2]
+			},
+
+			{
+				self._trianglesArray[1+(triIndex-1)*9+3],
+				self._trianglesArray[1+(triIndex-1)*9+4],
+				self._trianglesArray[1+(triIndex-1)*9+5]
+			},
+
+			{
+				self._trianglesArray[1+(triIndex-1)*9+6],
+				self._trianglesArray[1+(triIndex-1)*9+7],
+				self._trianglesArray[1+(triIndex-1)*9+8]
+			}
 		})
+		
 	end
 
 	return intersectingTriangles
 end
-]]
+
 
 local A = {}
 local B = {}
@@ -205,9 +224,11 @@ function BVH:intersectRay(rayOrigin, rayDirection, backfaceCulling)
 		triangle[1] = self._trianglesArray[1+(triIndex-1)*9]
 		triangle[2] = self._trianglesArray[1+(triIndex-1)*9+1]
 		triangle[3] = self._trianglesArray[1+(triIndex-1)*9+2]
+
 		triangle[4] = self._trianglesArray[1+(triIndex-1)*9+3]
 		triangle[5] = self._trianglesArray[1+(triIndex-1)*9+4]
 		triangle[6] = self._trianglesArray[1+(triIndex-1)*9+5]
+
 		triangle[7] = self._trianglesArray[1+(triIndex-1)*9+6]
 		triangle[8] = self._trianglesArray[1+(triIndex-1)*9+7]
 		triangle[9] = self._trianglesArray[1+(triIndex-1)*9+8]
@@ -216,9 +237,9 @@ function BVH:intersectRay(rayOrigin, rayDirection, backfaceCulling)
 
 		if t then
 			table.insert(intersectingTriangles, { 
-				triangle[1], triangle[2], triangle[3],
-				triangle[4], triangle[5], triangle[6],
-				triangle[7], triangle[8], triangle[9],
+				{ triangle[1], triangle[2], triangle[3] },
+				{ triangle[4], triangle[5], triangle[6] },
+				{ triangle[7], triangle[8], triangle[9] },
 				
 				t = t,
 				p = vec3.add(rayOrigin, vec3.mul_val(rayDirection, t))

@@ -65,6 +65,7 @@ static bool resize;
 
 static tfx_vertex_format vertex_format;
 static f32 view_matrix[16] = IDENTITY_MATRIX;
+static f32 proj_matrix[16] = IDENTITY_MATRIX;
 
 static u16 target_w, target_h;
 static bool enable_fill;
@@ -407,8 +408,6 @@ int ren_frame() {
     static Frustum frustum;
 
     static VertexVec scene_triangles;
-
-    static f32 proj_matrix[16];
 
     int curr_width, curr_height;
     SDL_GL_GetDrawableSize(window, &curr_width, &curr_height);

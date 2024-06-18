@@ -67,12 +67,32 @@ vec3.mul_val = function (a, b, len, out)
     return out
 end
 
+
+vec3.div_val = function (a, b, len, out)
+    out = out or {}
+    len = len or #a
+    for x=1, len do
+        out[x] = a[x] / b
+    end
+    return out
+end
+
+
 vec3.dot = function(a, b)
 	local sum = 0
 	for x=1, #a do
 		sum = sum + (a[x] * b[x])
     end
 	return sum
+end
+
+vec3.inverse = function (a, len, out)
+    out = out or {}
+    len = len or #a
+    for x=1, len do
+        out[x] = 1 / a[x]
+    end
+    return out
 end
 
 vec3.length2 = function (a)

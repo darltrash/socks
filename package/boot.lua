@@ -26,7 +26,7 @@ require = function (str)
             assert(t, "File '"..f1.."', '"..f2.."' doesn't exist!")
         end
 
-        local g = load(t, str..".lua")()
+        local g = load(t, f1)()
         require_cache[str] = g
     end
 
@@ -42,21 +42,22 @@ local function on_error(err)
 
     local ui = require "ui"
 
-    eng.music_stop()
+    --eng.music_stop()
 
     eng.videomode(400, 300)
 
-    eng.tick = noop
-    eng.frame = function ()
-        eng.far(0, 0x00000000)
-        local str = "FATAL ERROR:"
-        local w = ui.text_size(str)
+    eng.set_room {
+        frame = function ()
+            eng.far(0, 0x00000000)
+            local str = "FATAL ERROR:"
+            local w = ui.text_size(str)
 
-        eng.rect(-138, -49, w+16, 16, 0xFF0353FF)
-        ui.print(str.."\n\n"..err.."\n"..trace.."\n", -131, -44)
-    end
+            eng.rect(-138, -49, w+16, 16, 0xFF0353FF)
+            ui.print(str.."\n\n"..err.."\n"..trace.."\n", -131, -44)
+        end
+    }
 
-    if eng.os == "windows" then
+    if eng.os == "windows" or os.getenv("no_color") then
         ogprint("\nENV HALT:\n", err.."\n"..trace.."\n")
     else
         ogprint("\n\27[31mENV HALT:\n", err.."\n"..trace.."\n\27[0m")

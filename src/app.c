@@ -49,6 +49,28 @@ static int api_reload_tex() {
     return 0;
 }
 
+static int api_img_load() {
+    u32 length;
+    char *str = fs_read(luaL_checkstring(l, 1), &length);
+
+    if (str == NULL) 
+        return 0;
+
+    Image img;
+    if (img_init(&img, str, length))
+        return 0;
+
+    lua_newtable(l);
+    lua_pushlstring(l, (void*)img.pixels, img.w * img.h * sizeof(Color));
+    lua_setfield(l, -2, "pixels");
+    lua_pushinteger(l, img.w);
+    lua_setfield(l, -2, "w");
+    lua_pushinteger(l, img.h);
+    lua_setfield(l, -2, "h");
+    
+    return 1;
+}
+
 // eng.read(filename) -> string?
 static int api_fs_read() {
     u32 size;
@@ -583,6 +605,7 @@ static int api_exit() {
 static const luaL_Reg registry[] = {
     { "read",       api_fs_read    },
 
+    { "load_image", api_img_load   },
     { "reload_tex", api_reload_tex },
     { "videomode",  api_videomode  },
     { "camera",     api_camera     },
@@ -721,19 +744,15 @@ int main(int argc, char *argv[]) {
     lua_setfield(l, -2, "os");
 
 
-    #ifdef TRASH_DEBUG
-        lua_pushboolean(l, true);
-    #else
-        lua_pushboolean(l, false);
-    #endif
+    lua_pushboolean(l, eng_is_debug());
     lua_setfield(l, -2, "debug");
 
 
-    #ifndef THING_COMMIT
-    #define THING_COMMIT "unknown"
+    #ifndef BASKET_COMMIT
+    #define BASKET_COMMIT "unknown"
     #endif
 
-    lua_pushstring(l, THING_COMMIT);
+    lua_pushstring(l, BASKET_COMMIT);
     lua_setfield(l, -2, "commit");
 
 
