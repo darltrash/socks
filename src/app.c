@@ -655,8 +655,9 @@ static const luaL_Reg registry[] = {
 
 
 static int init(void *userdata) {
-    char *boot_lua = fs_read("boot.lua", NULL);
-    luaL_loadstring(l, boot_lua);
+    u32 length = 0;
+    char *boot_lua = fs_read("boot.lua", &length);
+    luaL_loadbuffer(l, boot_lua, length, "boot.lua");
     lua_call(l, 0, 0);
     free(boot_lua);
 
@@ -688,7 +689,7 @@ static int frame(f64 alpha, f64 delta) {
     //lua_gc(l, LUA_GCCOLLECT, 0);
     u32 usage = lua_gc(l, LUA_GCCOUNT, 0);
     ren_log("LUA MEMORY: %ukb", usage);
-    ren_log("FPS: %i", (u16)(1.0/delta));
+    ren_log("FPS: %u", (u16)(1.0/delta));
 
     lua_getglobal(l, "eng");
     lua_getfield(l, -1, "frame");
@@ -720,6 +721,31 @@ Application app = {
     .close = close
 };
 
+static int require_fs_read() {
+    const char* module = luaL_checkstring(l, 1);
+    for (char* p = (char *)module; *p; p++)
+        if (*p == '.') 
+            *p = '/';
+
+    char path[256];
+    snprintf(path, sizeof(path), "%s.lua", module);
+    
+    u32 length;
+    const char* source = fs_read(path, &length);
+
+    if (!source) {
+        lua_pushnil(l);
+        lua_pushfstring(l, "Module '%s' could not be read by fs_read()!", module);
+        return 2;
+    }
+
+    if (luaL_loadbuffer(l, source, length, path) != LUA_OK) {
+        return lua_error(l);
+    }
+
+    return 1;
+}
+
 int main(int argc, char *argv[]) {
     printf("setting up environment.\n");
 
@@ -728,9 +754,7 @@ int main(int argc, char *argv[]) {
         return true;
 
     luaL_openlibs(l);
-    
     lua_newtable(l);
-
     luaL_setfuncs(l, registry, 0);
 
 
@@ -757,6 +781,20 @@ int main(int argc, char *argv[]) {
 
 
     lua_setglobal(l, "eng");
+
+
+    lua_getglobal(l, "package");
+    lua_getfield(l, -1, "searchers");
+
+    lua_pushcfunction(l, require_fs_read);
+    for (int i = (int)lua_rawlen(l, -2) + 1; i > 1; i--) {
+        lua_rawgeti(l, -2, i - 1);
+        lua_rawseti(l, -3, i);
+    }
+    lua_rawseti(l, -2, 1);
+
+    lua_pop(l, 2);
+
 
     int o = eng_main(app, argv[0]);
 

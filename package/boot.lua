@@ -1,6 +1,3 @@
--- boot
-local noop = function (...) end
-
 -- our fricked up, nicer version of print.
 local ogprint = print
 
@@ -10,32 +7,10 @@ end
 
 print("i'm here now.")
 
--- custom require because we will only read 
--- files embedded into the binary itself
--- TODO: FIX THIS
-local require_cache = {}
-require = function (str)
-    if not require_cache[str] then
-        local f1 = string.gsub(str, "%.", "/") .. ".lua"
-        local t = eng.read(f1)
-        
-        if not t then
-            local f2 = string.gsub(str, "%.", "/") .. "/init.lua"
-            t = eng.read(f2)
-
-            assert(t, "File '"..f1.."', '"..f2.."' doesn't exist!")
-        end
-
-        local g = load(t, f1)()
-        require_cache[str] = g
-    end
-
-    return require_cache[str]
-end
 
 -- cool crash screen, this essentially assumes
 -- nothing in the C side is unrecoverable.
-local function on_error(err)
+local on_error = function(err)
     local trace = debug.traceback("", 2)
 
     trace = trace:gsub("\t", "→ "):gsub("stack traceback:", "TRACEBACK:")
@@ -48,7 +23,7 @@ local function on_error(err)
 
     eng.set_room {
         frame = function ()
-            eng.far(0, 0x00000000)
+            eng.far(0, 0x00000000) 
             local str = "FATAL ERROR:"
             local w = ui.text_size(str)
 
@@ -72,12 +47,11 @@ eng.set_room = function (new_room, ...)
     print("wazzaaa! room change.")
     assert(type(new_room)=="table")
 
-    new_room.init  = new_room.init  or noop
-    new_room.tick  = new_room.tick  or noop
-    new_room.frame = new_room.frame or noop
-
     room = new_room
-    xpcall(room.init, on_error, room, ...)
+
+    if new_room.init then
+        xpcall(new_room.init, on_error, room, ...)
+    end
 
     return room
 end

@@ -13,11 +13,11 @@ typedef int64_t i64;
 typedef int32_t i32;
 typedef int16_t i16;
 typedef int8_t  i8;
-
+ 
 /*
     Basket design rules/style:
     - Assume people will build their software around Basket, as a framework
-    - Null output or non-zero (true) equals error.
+    - Null output (in case of arrays/pointers) or non-zero (true) equals error.
     - snake_case for variables
     - camelCase for functions
     - PascalCase for types (except for number types)

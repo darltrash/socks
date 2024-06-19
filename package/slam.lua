@@ -431,7 +431,7 @@ slam.check = function(position, velocity, radius, query, substeps)
 
         e_radius     = radius,
         e_position   = vec3_div(position, radius),
-
+ 
         contacts     = {}
     }
 

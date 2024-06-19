@@ -239,6 +239,11 @@ return {
 
         ent.collider = collider
         
+        ent.sphere_collider = {
+            offset = { 0, 0, 1 },
+            size = { 1, 0.5, 1 }
+        }
+
         ent.state = ent.state or "on_air"
         ent.id = "player"
         ent.tint = { 255, 255, 255, 255 }

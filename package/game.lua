@@ -10,10 +10,7 @@ local slam = require "slam"
 local ui = require "ui"
 local assets = require "assets"
 local entities = require "entities"
-
-local balls = {}
-
-require "material"
+local materials = require "material"
 
 local state = {
     init = function (self, world)
@@ -439,17 +436,16 @@ local state = {
                 end
             end
 
---            if ent.collider then
---                local t = vec3.add(p, ent.collider.offset)
---                t = vec3.add(t, vec3.mul_val(ent.collider.size, 0.5))
---
---                eng.render {
---                    mesh = assets.cube,
---                    model = mat4.from_transform(t, {0, 0, 0}, ent.collider.size),
---                    texture = { 0, 0, 1, 1 },
---                    tint = { 255, 255, 255, 255 / 8 }
---                }
---            end
+            if ent.sphere_collider then
+                local t = vec3.add(p, ent.sphere_collider.offset)
+                
+                eng.render {
+                    mesh = assets.sphere,
+                    model = mat4.from_transform(t, {0, 0, 0}, ent.sphere_collider.size),
+                    texture = { 0, 0, 1, 1 },
+                    tint = { 255, 255, 255, 255 / 8 }
+                }
+            end
 
             ::continue::
         end
@@ -533,14 +529,6 @@ local state = {
         eng.render {
             mesh = self.world_mesh
         }
-
-        for _, ball in ipairs(balls) do
-            eng.render {
-                mesh = assets.sphere,
-                texture = { 0, 0, 1, 1 },
-                model = mat4.from_transform(ball.position, {eng.timer*0.1, eng.timer*0.2, eng.timer*0.3}, 0.5),
-            }
-        end
 
         if self.interactable then
             ---- 388, 500, 12, 12

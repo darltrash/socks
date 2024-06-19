@@ -3,11 +3,11 @@ local materials = {}
 local texture = eng.load_image("assets/tex_material.png")
 
 materials.lookup = {
-    [0xFF0000FF] = { -- "RED"
+    [0xFF0000FF] = { -- "RED" (bricc)
         collides = true,
     },
 
-    [0xFF006AFF] = { -- "ORANGE"
+    [0xFF006AFF] = { -- "ORANGE" (wood)
         collides = true,
     },
 
@@ -15,11 +15,11 @@ materials.lookup = {
         collides = true,
     },
 
-    [0xFF00FF97] = { -- "GREEN"
+    [0xFF00FF97] = { -- "GREEN" (grass (ass))
         collides = true,
     },
 
-    [0xFFB6FF00] = { -- "CYAN"
+    [0xFFB6FF00] = { -- "CYAN" 
         collides = true,
     },
 
@@ -52,14 +52,13 @@ materials.from_uv = function (u, v)
     
     local m = string.unpack("<I4", texture.pixels, (i*4) + 1)
 
-    return materials.lookup[m] and m or 0
+    local l = materials.lookup[m]
+    if not l then
+        l = materials.lookup[0]
+    end
+
+    return l
 end
 
-for i=0, 6 do
-    local a = materials.from_uv(i/texture.w, 0)
-    local b = materials.from_uv(i/texture.w, 1/texture.h)
-
-    print(("%08x %08x"):format(a, b))
-end
 
 return materials
