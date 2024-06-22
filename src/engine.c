@@ -212,6 +212,8 @@ int eng_main(Application app, const char *arg0) {
     // sigh...
     inp_register_scancode("space", INP_JUMP);
 
+    eng_tickrate(30);
+
     ENG_CALL_IF_VALID(app.init)
 
     // for our delta stuff
@@ -224,8 +226,6 @@ int eng_main(Application app, const char *arg0) {
     u8 delta_len = 0;
 
     f32 lag = 1.0/hz;
-
-    eng_tickrate(30);
 
     while (running) {
         f32 timestep = 1.0/hz;

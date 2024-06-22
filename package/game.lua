@@ -5,17 +5,22 @@ local json = require "lib.json"
 local fam  = require "lib.fam"
 local bvh  = require "bvh"
 local player = require "player"
-local slam = require "slam"
+local blam = require "blam"
 
 local ui = require "ui"
 local assets = require "assets"
 local entities = require "entities"
 local materials = require "material"
 
+local ball = {
+    position = {0, 0, 0},
+    velocity = {0, 0, 0}
+}
+
 local state = {
     init = function (self, world)
         eng.ambient(0x19023dff)
-        eng.far(60, 0x0c031aff)
+        eng.far(80, 0x0c031aff)
         eng.videomode(500, 400)
         --eng.dithering(false)
 
@@ -206,17 +211,28 @@ local state = {
 
         self.interactable = false
 
-        local f = function (min, max)
-            return self.triangles:intersectAABB({min = min, max = max})
+        local query_bvh = function (triangles, min, max)
+            local t = self.triangles:intersectAABB({min = min, max = max})
+            for k, v in ipairs(t) do
+                for x=1, 3 do
+                    table.insert(triangles, v[x])
+                end
+            end
         end
 
         local p = self.entities.map.player
 
+        -- https://www.youtube.com/watch?v=-j7pu9RlOUY
+
 --        if eng.input("menu")==1 then
---            table.insert(balls, {
---                position = vec3.add(p.position, {0, 0, 4}),
---                velocity = {0, 0, 0.0}
---            })
+--            ball.position = vec3.add(p.position, {0, 0, 1})
+--            ball.velocity = {0, 0, 0.0}
+--        end
+--
+--        do 
+--            ball.velocity = vec3.add(ball.velocity, { 0, 0, -0.05 })
+--
+--            ball.position, ball.velocity = blam.response_update(ball.position, ball.velocity, {0.1, 0.1, 0.1}, query_bvh)
 --        end
 --
 --        for _, ball in ipairs(balls) do
@@ -291,6 +307,23 @@ local state = {
                     ent.velocity = vec3.sub(vec3.sub(k, hs, 3), ent.position)
                 end
             end
+
+--            local coll = ent.sphere_collider
+--            if coll then
+--                local p = vec3.add(ent.position, coll.offset)
+--                local _, velocity, planes = blam.response_update(p, ent.velocity, coll.size, query_bvh)
+--
+--                ent.on_floor = false
+--
+--                for _, plane in ipairs(planes) do
+--                    if vec3.dot(plane.normal, {0, 0, 1}) > 0.9 then
+--                        ent.on_floor = true
+--                        break
+--                    end
+--                end
+--
+--                ent.velocity = velocity
+--            end
 
             ent.position = vec3.add(ent.position, ent.velocity)
     
@@ -436,19 +469,26 @@ local state = {
                 end
             end
 
-            if ent.sphere_collider then
-                local t = vec3.add(p, ent.sphere_collider.offset)
-                
-                eng.render {
-                    mesh = assets.sphere,
-                    model = mat4.from_transform(t, {0, 0, 0}, ent.sphere_collider.size),
-                    texture = { 0, 0, 1, 1 },
-                    tint = { 255, 255, 255, 255 / 8 }
-                }
-            end
+--            if ent.sphere_collider then
+--                local t = vec3.add(p, ent.sphere_collider.offset)
+--                
+--                eng.render {
+--                    mesh = assets.sphere,
+--                    model = mat4.from_transform(t, {0, 0, 0}, ent.sphere_collider.size),
+--                    texture = { 0, 0, 1, 1 },
+--                    tint = { 255, 255, 255, 255 / 2 }
+--                }
+--            end
 
             ::continue::
         end
+
+        eng.render {
+            mesh = assets.sphere,
+            model = mat4.from_transform(ball.position, 0, 0.1),
+            texture = {0, 0, 1, 1},
+            tint = {255, 0, 0, 255}
+        }
 
         for i=#self.particles, 1, -1 do
             local p = self.particles[i]

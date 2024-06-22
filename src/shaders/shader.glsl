@@ -83,7 +83,7 @@
         //if (dither4x4(gl_FragCoord.xy, fog*2.0) < 0.5) 
         //    l.a = 0.0;
 
-        o.rgb += l.rgb * l.a * 0.5;
+        o.rgb += l.rgb * l.a * 0.8;
 
         gl_FragColor = o;
     }

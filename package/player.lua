@@ -240,8 +240,8 @@ return {
         ent.collider = collider
         
         ent.sphere_collider = {
-            offset = { 0, 0, 1 },
-            size = { 1, 0.5, 1 }
+            offset = { 0, 0, 1.1 },
+            size = { 1, 0.5, 0.9 }
         }
 
         ent.state = ent.state or "on_air"
@@ -249,6 +249,8 @@ return {
         ent.tint = { 255, 255, 255, 255 }
 
         ent.listener = true
+
+        --ent.position = vec3.add(ent.position, {1, 1, 4})
     end,
 
     tick = function (ent, world)

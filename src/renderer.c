@@ -303,13 +303,6 @@ RenderCall *ren_draw(RenderCall call) {
     return &calls.data[calls.length];
 }
 
-typedef union{ 
-    struct {
-        Vertex a, b, c;
-    };
-    Vertex arr[3];
-} Triangle;
-
 void ren_quad(Quad quad) {
 //    f32 w = quad.texture.w * quad.scale[0];
 //    f32 h = quad.texture.h * quad.scale[1];

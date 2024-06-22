@@ -655,6 +655,8 @@ static const luaL_Reg registry[] = {
 
 
 static int init(void *userdata) {
+    //eng_tickrate(1.0);
+
     u32 length = 0;
     char *boot_lua = fs_read("boot.lua", &length);
     luaL_loadbuffer(l, boot_lua, length, "boot.lua");

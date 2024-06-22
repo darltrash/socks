@@ -133,7 +133,7 @@ bool iqm_init(Model *map, const char *data) {
         }
     }
 
-    RenderBox box = {
+    Box box = {
         {0.0, 0.0, 0.0},
         {0.0, 0.0, 0.0}
     };

@@ -45,6 +45,24 @@ typedef int8_t  i8;
         f32 position[3], rotation[4], scale[3];
     } Transform;
 
+    typedef struct {
+        f32 position[3];
+        f32 uv[2];
+        Color color;
+    } Vertex;
+
+    typedef union{ 
+        struct {
+            Vertex a, b, c;
+        };
+        Vertex arr[3];
+    } Triangle;
+
+    typedef struct {
+        f32 min[3];
+        f32 max[3];
+    } Box;
+
     #define COLOR_WHITE (Color){ .full=0xffffffff }
 
     #ifdef BASKET_INTERNAL
@@ -94,26 +112,15 @@ typedef int8_t  i8;
 
 // MODEL.C //////////////////////////////////////////////////////
     typedef struct {
-        f32 position[3];
-        f32 uv[2];
-        Color color;
-    } Vertex;
-
-    typedef struct {
         u8 bone[4];
         u8 weight[4];
     } VertexAnim;
 
     typedef struct {
-        f32 min[3];
-        f32 max[3];
-    } RenderBox;
-
-    typedef struct {
         Vertex *data;
         VertexAnim *animation; // Can be NULL
         u32 length;
-        RenderBox box;
+        Box box;
     } MeshSlice;
 
     typedef struct {
@@ -233,6 +240,23 @@ typedef int8_t  i8;
     bool frustum_vs_aabb(Frustum f, f32 min[3], f32 max[3]);
     bool frustum_vs_sphere(Frustum f, f32 pos[3], f32 radius);
     bool frustum_vs_triangle(Frustum f, f32 a[3], f32 b[3], f32 c[3]);
+
+
+// POOL.C ///////////////////////////////////////////////////////
+
+typedef struct VertexPool VertexPool;
+
+struct VertexPool {
+    VertexPool* left;
+    VertexPool* right;
+
+    Box bounds;
+    Triangle* triangles;
+    u32 triangle_count;
+};
+
+int pool_init(VertexPool* pool, Triangle* triangles, u32 count);
+void pool_free(VertexPool* node);
 
 
 // RENDERER.C ///////////////////////////////////////////////////
