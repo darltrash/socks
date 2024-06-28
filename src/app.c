@@ -655,8 +655,6 @@ static const luaL_Reg registry[] = {
 };
 
 
-Font font;
-
 static int init(void *userdata) {
     //eng_tickrate(1.0);
 
@@ -667,9 +665,6 @@ static int init(void *userdata) {
     free(boot_lua);
 
     api_reload_tex();
-
-    char *font_data = fs_read("assets/fnt_atkinsonhyperlegible-bold.ttf", &length);
-    fnt_init_ttf(&font, font_data, length, 6);
 
 #ifdef TRASH_DEBUG
     eng_set_debug(true);
@@ -691,110 +686,6 @@ static int tick(f64 timestep) {
     return result != LUA_OK;
 }
 
-int utf8_char_length(char c) {
-    uint8_t byte = (uint8_t)c;
-    if (byte < 0x80) return 1;              // 1-byte character (ASCII)
-    else if ((byte >> 5) == 0x6) return 2;  // 2-byte character
-    else if ((byte >> 4) == 0xE) return 3;  // 3-byte character
-    else if ((byte >> 3) == 0x1E) return 4; // 4-byte character
-    return 0; // Invalid UTF-8 byte
-}
-
-u32 utf8_to_codepoint(const char *str, int len) {
-    switch (len) {
-        case 1:
-            return (uint8_t)str[0];
-
-        case 2:
-            return ((uint8_t)str[0] & 0x1F) << 6 |
-                   ((uint8_t)str[1] & 0x3F);
-
-        case 3:
-            return ((uint8_t)str[0] & 0x0F) << 12 |
-                   ((uint8_t)str[1] & 0x3F) << 6 |
-                   ((uint8_t)str[2] & 0x3F);
-
-        case 4:
-            return ((uint8_t)str[0] & 0x07) << 18 |
-                   ((uint8_t)str[1] & 0x3F) << 12 |
-                   ((uint8_t)str[2] & 0x3F) << 6 |
-                   ((uint8_t)str[3] & 0x3F);
-    }
-
-    return 1;
-}
-
-
-void iterate_utf8(const char *str) {
-    const char *ptr = str;
-    while (*ptr) {
-        int len = utf8_char_length(*ptr);
-        if (len == 0) {
-            printf("Invalid UTF-8 character encountered.\n");
-            return;
-        }
-
-        // Print the UTF-8 character
-        printf("Character: ");
-        for (int i = 0; i < len; i++) {
-            printf("%c", ptr[i]);
-        }
-        printf("\n");
-
-        // Move to the next character
-        ptr += len;
-    }
-}
-
-static void print(const char *str, f32 x, f32 y, f32 scale) {
-    f32 vec[3] = {
-        x, y, 0
-    };
-
-    f32 s[16] = {
-        scale, 0, 0, 0,
-        0, scale, 0, 0,
-        0, 0, scale, 0,
-        0, 0, 0,     1
-    };
-
-    f32 t[16];
-
-    f32 o[16];
-
-    const char *ptr = str;
-    while (*ptr) {
-        int len = utf8_char_length(*ptr);
-        uint32_t codepoint = utf8_to_codepoint(ptr, len);
-
-        for (int i=0; i < font.character_amount; i++) {
-            Character c = font.characters[i];
-            
-            if (c.codepoint == codepoint) {
-                vec[0] += c.advance;
-                mat4_from_translation(t, vec);
-                mat4_mul(o, t, s);
-
-                RenderCall call = (RenderCall) {
-                    .tint = { 255, 255, 255, 255 },
-                    .mesh = c.mesh,
-                    .texture = { .w = 1, .h = 1, .x = 0, .y = 0 }
-                };
-
-                memcpy(call.model, o, sizeof(o));
-
-                ren_draw(call);
-
-
-                break;
-            }
-        }
-
-        ptr += len;
-    }
-}
-
-int t = 0;
 static int frame(f64 alpha, f64 delta) {
     ren_log("\n// ENVIRONMENT //////");
 
@@ -813,29 +704,6 @@ static int frame(f64 alpha, f64 delta) {
     int result = lua_pcall(l, 3, 0, 0);
 
     lua_pop(l, -2);
-
-    t++;
-
-    f32 e[16];
-    f32 o[3] = { 0.5, 0.5, 0.5 };
-
-//    MeshSlice slice = font.characters[(t / 4) % font.character_amount].mesh;
-//
-//    RenderCall *c = ren_draw((RenderCall) {
-//        .model = {
-//            25, 0, 0, 0,
-//            0, 25, 0, 0, 
-//            0, 0, 25, 0,
-//            0, 0, 0, 1
-//        },
-//        .tint = { 255, 255, 255, 255 },
-//        .mesh = slice,
-//        .texture = { .w = 1, .h = 1, .x = 0, .y = 0 }
-//    });
-    
-    //mat4_from_scale(c->model, o);
-
-    print("hello!", 0, 0, 60);
 
     return result != LUA_OK;
 }

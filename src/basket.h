@@ -162,25 +162,6 @@ typedef int8_t  i8;
     int mod_init(Model *model, const char *data);
     void mod_free(Model *model);
 
-// Can only load TTF as meshes
-
-// FONT.C ///////////////////////////////////////////////////////
-typedef struct {
-    u32 codepoint;
-    MeshSlice mesh;
-    f32 advance;
-    u32 index;
-} Character;
-
-typedef struct {
-    Character *characters; // NULL terminated
-    u16 character_amount;
-    u16 fallback; // Should be "?"
-} Font;
-
-int fnt_init_ttf(Font *font, const char *data, u32 length, u32 quality);
-void fnt_free(Font *font);
-
 
 // AUDIO.C //////////////////////////////////////////////////////
     typedef u32 Sound;  // Raw sound
@@ -322,8 +303,7 @@ void pool_free(VertexPool* node);
     RenderCall *ren_draw(RenderCall call);
     void ren_quad(Quad quad);
     void ren_rect(i32 x, i32 y, u32 w, u32 h, Color color);
-    void ren_print(Font font, const char string, i16 x, i16 y, f32 scale, Color color);
-
+    
     void ren_camera(f32 from[3], f32 to[3], f32 up[3]);
     void ren_far(f32 far, Color clear);
     void ren_ambient(Color ambient);
