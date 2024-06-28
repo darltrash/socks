@@ -134,7 +134,14 @@ local switch = {
         end
 
         ent.animation_timer = ent.animation_timer + 0.15
-        if vec3.length(vel) < 0.9 then
+        
+        local moving = vec3.length(vel) > 0.2
+        if moving and not ent._moving then
+            ent.animation_timer = 2
+        end
+        ent._moving = moving
+
+        if not moving then
             ent.animation_timer = 1
         end
         

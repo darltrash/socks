@@ -397,7 +397,7 @@ Unloads an [`Image`](#image), internally freeing `image->pixels`, and setting bo
 
     void ren_camera(f32 from[3], f32 to[3]);
     void ren_log(const char *str, ...);
-    RenderCall *ren_draw(RenderCall call);
+    RenderCall *ren_render(RenderCall call);
     void ren_light(Light);
     void ren_quad(Quad quad);
     void ren_rect(i32 x, i32 y, u32 w, u32 h, Color color);

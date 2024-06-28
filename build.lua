@@ -46,6 +46,23 @@ local pack = function ()
     ]]
 end
 
+local compiled_moon = false
+
+local function moon()
+    if compiled_moon then return end
+    compiled_moon = true
+
+    if not opt_exec("moonc") then
+        print("Could not find moonc in $PATH, cannot compile .moon files.")
+        return
+    end
+
+    for n in io.popen("find package/ -type f -name \"*.moon\""):lines() do
+        exec("moonc", n)
+        print()
+    end
+end
+
 local default_toolchain = {
     name = "unknown",
     
@@ -63,6 +80,8 @@ local default_toolchain = {
 }
 
 local function compile(setup)
+    --moon()
+
     if not setup.debug then
         pack()
     end
@@ -274,6 +293,8 @@ end
 local function run()
     print("\n!! fast run mode!!! aeeee !!")
 
+    --moon()
+
     check_exec("tcc")
 
     local a = "-Ilib/ -lSDL2 -lm -pthread"
@@ -295,12 +316,13 @@ local function cleanup()
     os.execute("rm -rf out")
 end
 
-print("hey i build stuff hello")
+print("hey i build stuff hello") 
 
 local options = {
     cleanup = cleanup,
     pack = pack,
     run = run,
+--    moon = moon,
 
     release = release,
     release_linux = release_linux,

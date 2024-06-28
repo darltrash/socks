@@ -179,35 +179,36 @@ local state = {
     end,
     
     tick = function (self, timestep)
-        local t = eng.text()
-        if #t > 0 then
-            self.easter_bunny = self.easter_bunny .. t:lower()
-            self.easter_time = 5
-        end
-
-        self.easter_time = self.easter_time - (1/30)
-        if self.easter_time < 0 then
-            self.easter_bunny = ""
-        end
-
-        local rabbit_barbecue = true
-        local l = #self.easter_bunny
-        for name, easter in pairs(self.easter_eggs) do
-            if name:sub(1, l) == self.easter_bunny then
-                rabbit_barbecue = false
-
-                if l == #name then
-                    self.easter_bunny = ""
-                    easter(self)
-                    break
+        do
+            local t = eng.text()
+            if #t > 0 then
+                self.easter_bunny = self.easter_bunny .. t:lower()
+                self.easter_time = 5
+            end
+    
+            self.easter_time = self.easter_time - (1/30)
+            if self.easter_time < 0 then
+                self.easter_bunny = ""
+            end
+    
+            local rabbit_barbecue = true
+            local l = #self.easter_bunny
+            for name, easter in pairs(self.easter_eggs) do
+                if name:sub(1, l) == self.easter_bunny then
+                    rabbit_barbecue = false
+    
+                    if l == #name then
+                        self.easter_bunny = ""
+                        easter(self)
+                        break
+                    end
                 end
             end
+    
+            if rabbit_barbecue then
+                self.easter_bunny = ""
+            end
         end
-
-        if rabbit_barbecue then
-            self.easter_bunny = ""
-        end
-
 
         self.interactable = false
 
@@ -260,7 +261,6 @@ local state = {
             ent._scale    = vec3.copy(ent.scale)
             ent._rotation = ent.rotation
 
-
             -- Handle some animations
             if 
                 ent.texture and
@@ -302,7 +302,7 @@ local state = {
                         if col.normal.z > 0.5 then
                             ent.on_floor = true
                         end
-                    end 
+                    end
 
                     ent.velocity = vec3.sub(vec3.sub(k, hs, 3), ent.position)
                 end
@@ -368,6 +368,7 @@ local state = {
 
         for _, ent in ipairs(self.entities) do
             local visible = (ent.texture or ent.mesh) and not ent.invisible
+
             if not visible then goto continue end
     
             local p = vec3.lerp(ent._position, ent.position, alpha)

@@ -24,13 +24,13 @@
 static int width, height;
 
 typedef vec_t(Vertex) VertexVec;
-typedef vec_t(Quad) QuadVec;
 typedef vec_t(RenderCall) CallVec;
 typedef vec_t(Light) LightVec;
 
 static vec_char_t logs;
 static CallVec calls;
-static QuadVec quads; 
+static CallVec flat_calls;
+static VertexVec transient;
 static LightVec lights;
 
 static tfx_uniform proj_uniform;
@@ -285,7 +285,8 @@ int ren_init(SDL_Window *_window) {
 
     vec_init(&logs);
     vec_init(&calls);
-    vec_init(&quads);
+    vec_init(&transient);
+    vec_init(&flat_calls);
     vec_init(&lights);
 
     return 0;
@@ -298,19 +299,63 @@ void ren_camera(f32 from[3], f32 to[3], f32 up[3]) {
     mat4_mulvec(camera_target, to, view_matrix);
 }
 
-RenderCall *ren_draw(RenderCall call) {
+RenderCall *ren_render(RenderCall call) {
     vec_push(&calls, call);
     return &calls.data[calls.length];
 }
 
-void ren_quad(Quad quad) {
-//    f32 w = quad.texture.w * quad.scale[0];
-//    f32 h = quad.texture.h * quad.scale[1];
-//
-//    if (!aabb(quad.position[0], quad.position[1], w, h, -150, -150, 300, 300))
-//        return;
 
-    vec_push(&quads, quad);
+RenderCall *ren_draw(RenderCall call) {
+    vec_push(&flat_calls, call);
+    return &flat_calls.data[flat_calls.length];
+}
+
+int ren_transient(MeshSlice *slice, u32 length) {
+    slice->length = length;
+
+    // TODO: FIX THIS
+    for (int i = 0; i < length; i++)
+        vec_push(&transient, (Vertex) {});
+
+    slice->data = &transient.data[transient.length - length];
+
+    return 0;
+}
+
+void ren_quad(Quad q) {
+    const f32 tex_w = texture_main.width;
+    const f32 tex_h = texture_main.height;
+
+    const f32 tsx = (q.texture.x) / tex_w;
+    const f32 tsy = (q.texture.y) / tex_h;
+    const f32 tcx = (q.texture.x + q.texture.w) / tex_w;
+    const f32 tcy = (q.texture.y + q.texture.h) / tex_h;
+
+    const f32 qsx = q.position[0];
+    const f32 qsy = q.position[1];
+    const f32 qcx = q.position[0] + (q.texture.w * q.scale[0]);
+    const f32 qcy = q.position[1] + (q.texture.h * q.scale[1]);
+
+    RenderCall call = {
+        .model = IDENTITY_MATRIX,
+        .tint = q.color
+    };
+
+    ren_transient(&call.mesh, 6);
+
+    u8 ri = 0;
+
+    #define QUAD_PUSH_VERTEX(x, y, u, v) \
+        call.mesh.data[ri++] = (Vertex) { { x, y, 0.f }, { u, v }, {.full = 0xFFFFFFFF} };                                   
+
+    QUAD_PUSH_VERTEX(qsx, qsy, tsx, tsy)
+    QUAD_PUSH_VERTEX(qsx, qcy, tsx, tcy)
+    QUAD_PUSH_VERTEX(qcx, qsy, tcx, tsy)
+    QUAD_PUSH_VERTEX(qcx, qcy, tcx, tcy)
+    QUAD_PUSH_VERTEX(qcx, qsy, tcx, tsy)
+    QUAD_PUSH_VERTEX(qsx, qcy, tsx, tcy)
+
+    ren_draw(call);
 }
 
 void ren_light(Light light) {
@@ -400,7 +445,7 @@ int ren_frame() {
     static tfx_canvas canvas;
     static Frustum frustum;
 
-    static VertexVec scene_triangles;
+    static VertexVec tmp_vertices;
 
     int curr_width, curr_height;
     SDL_GL_GetDrawableSize(window, &curr_width, &curr_height);
@@ -459,8 +504,8 @@ int ren_frame() {
         int pixelsize = scale;
         tfx_set_uniform_int(&scale_uniform, &pixelsize, 1);
 
-        if (!scene_triangles.data)
-            vec_init(&scene_triangles);
+        if (!tmp_vertices.data)
+            vec_init(&tmp_vertices);
     }
 
     const f32 aspect = resolution[0] / resolution[1];
@@ -533,6 +578,8 @@ int ren_frame() {
 	tfx_view_set_name(view, "the main pass");
     tfx_view_set_canvas(view, &canvas, 0);
 
+    vec_clear(&tmp_vertices);
+
     for (u32 i = 0; i < calls.length; i++) {
         RenderCall call = calls.data[i];
         if (call.disable) continue;
@@ -570,36 +617,25 @@ int ren_frame() {
             }
 
             if (frustum_vs_triangle(frustum, tri.a.position, tri.b.position, tri.c.position))
-                vec_pusharr(&scene_triangles, tri.arr, 3);
+                vec_pusharr(&tmp_vertices, tri.arr, 3);
         }
     }
     vec_clear(&calls);
 
-    Triangle *t_list = (Triangle *)scene_triangles.data;
-    const u32 t_amount = scene_triangles.length/3;
+    Triangle *t_list = (Triangle *)tmp_vertices.data;
+    u32 t_amount = tmp_vertices.length/3;
 
     tfx_transient_buffer buffer = tfx_transient_buffer_new(&vertex_format, t_amount*3);
-    memcpy(buffer.data, scene_triangles.data, t_amount*sizeof(Triangle));
-
-    vec_clear(&scene_triangles);
+    memcpy(buffer.data, tmp_vertices.data, t_amount*sizeof(Triangle));
 
     ren_log("\n// RENDERER //////");
     ren_log("TRIANGLES:  %i", t_amount);
     ren_log("RESOLUTION: %ix%i", width, height);
-    ren_log("QUADS:      %i", quads.length);
     ren_log("LIGHTS:     %i", real_index);
-
-    const u32 s = 
-            (quads.length * 2 * sizeof(Triangle)) +
-            (t_amount * sizeof(Triangle));
-
-    const f32 size = (float)(s) / 1024.0f;
-    ren_log("GPU UPLOADS: (%.3gkb)", size);
 
     vec_push(&logs, 0);
 
     tfx_debug_print(8, 0, 9, 5, logs.data);
-
 
     vec_clear(&logs);
 
@@ -613,55 +649,75 @@ int ren_frame() {
     const u8 ui = 3;
     tfx_set_state(TFX_STATE_RGB_WRITE);
     tfx_view_set_name(ui, "the quad pass");
+    tfx_view_set_depth_test(ui, TFX_DEPTH_TEST_LT);
     tfx_view_set_canvas(ui, &canvas, 0);
     tfx_set_texture(&image_uniform, &texture_main, 0);
-    tfx_transient_buffer quad_buffer = tfx_transient_buffer_new(&vertex_format, quads.length*6);
 
-    const f32 w = resolution[0] / 2.f;
-    const f32 h = resolution[1] / 2.f;
+    vec_clear(&tmp_vertices);
 
-    u32 ri = 0;
-    Vertex *quad_vertices = quad_buffer.data;
+    f32 flat_matrix[16];
+    const u16 w = resolution[0] / 2.f;
+    const u16 h = resolution[1] / 2.f;
 
-    const f32 tex_w = (f32)texture_main.width;
-    const f32 tex_h = (f32)texture_main.height;
+    mat4_ortho(flat_matrix, -w, w, -h, h, 0.001, 10.0);
 
-    // TODO: Fix wobbly boys
+    for (u32 i = 0; i < flat_calls.length; i++) {
+        RenderCall call = flat_calls.data[i];
 
-    for (u32 i = 0; i < quads.length; i++) {
-        Quad q = quads.data[i];
+        if (call.disable) continue;
+        if (call.tint.a == 0) continue;
+        if (call.mesh.length % 3 != 0) continue;
 
-        const f32 tsx = (q.texture.x) / tex_w;
-        const f32 tsy = (q.texture.y) / tex_h;
-        const f32 tcx = (q.texture.x + q.texture.w) / tex_w;
-        const f32 tcy = (q.texture.y + q.texture.h) / tex_h;
-
-        const f32 qsx = q.position[0];
-        const f32 qsy = q.position[1];
-        const f32 qcx = q.position[0] + (q.texture.w * q.scale[0]);
-        const f32 qcy = q.position[1] + (q.texture.h * q.scale[1]);
-
-        #define QUAD_PUSH_VERTEX(x, y, u, v) {                      \
-            Vertex tmp = (Vertex) {                                 \
-                { x/(resolution[0]/2), -y/(resolution[1]/2), 0.f }, \
-                { u, v },                                           \
-                { q.color.r, q.color.g, q.color.b, q.color.a }      \
-            };                                                      \
-            quad_vertices[ri++] = tmp;                              \
+        if (call.texture.w == 0) {
+            call.texture.w = texture_main.width;
+            call.texture.h = texture_main.height;
         }
 
-        QUAD_PUSH_VERTEX(qsx, qsy, tsx, tsy)
-        QUAD_PUSH_VERTEX(qsx, qcy, tsx, tcy)
-        QUAD_PUSH_VERTEX(qcx, qsy, tcx, tsy)
-        QUAD_PUSH_VERTEX(qcx, qcy, tcx, tcy)
-        QUAD_PUSH_VERTEX(qcx, qsy, tcx, tsy)
-        QUAD_PUSH_VERTEX(qsx, qcy, tsx, tcy)
+        mat4_mul(m, call.model, flat_matrix);
 
+        for (u32 j = 0; j < call.mesh.length; j++) {
+            Vertex vertex = call.mesh.data[j];
+
+            #define _CCM(a,b) (u8) (((unsigned)a * (unsigned)b + 255u) >> 8)
+            #define _CKW(a) ((f32)(a) / (f32)texture_main.width)
+            #define _CKH(a) ((f32)(a) / (f32)texture_main.height)
+
+            Vertex copy = {
+                .uv = {
+                    _CKW(call.texture.w) * vertex.uv[0] + _CKW(call.texture.x),
+                    _CKH(call.texture.h) * vertex.uv[1] + _CKH(call.texture.y)
+                },
+
+                .color = {
+                    .r = _CCM(call.tint.r, vertex.color.r),
+                    .g = _CCM(call.tint.g, vertex.color.g),
+                    .b = _CCM(call.tint.b, vertex.color.b),
+                    .a = _CCM(call.tint.a, vertex.color.a)
+                }
+            };
+
+            mat4_mulvec(copy.position, vertex.position, m);
+
+            vec_push(&tmp_vertices, copy);
+        }
     }
-    vec_clear(&quads);
+
+    tfx_transient_buffer quad_buffer = tfx_transient_buffer_new(&vertex_format, tmp_vertices.length);
+    memcpy(quad_buffer.data, tmp_vertices.data, tmp_vertices.length * sizeof(Vertex));
+    t_amount += tmp_vertices.length;
 
     tfx_set_transient_buffer(quad_buffer);
     tfx_submit(ui, quad_program, false);
+
+    const f32 size = (float)(t_amount * sizeof(Triangle)) / 1024.0f;
+    ren_log("GPU UPLOADS: (%.3gkb)", size);
+
+    vec_clear(&flat_calls);
+
+    const f32 transient_mem = (float)(transient.length * sizeof(Triangle)) / 1024.0f;
+    ren_log("TRANSIENT:   (%.3gkb)", transient_mem);
+
+    vec_clear(&transient);
 
 
     // RENDER OUTPUT
