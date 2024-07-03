@@ -63,6 +63,10 @@ typedef int8_t  i8;
         f32 max[3];
     } Box;
 
+    typedef struct {
+        u32 offset, length;
+    } Range;
+
     #define COLOR_WHITE (Color){ .full=0xffffffff }
 
     #ifdef BASKET_INTERNAL
@@ -150,10 +154,15 @@ typedef int8_t  i8;
     } AnimationState;
 
     typedef struct {
+        char *name;
+        Range range;
+    } SubMesh;
+
+    typedef struct {
         MeshSlice mesh;
         AnimationState animation;
 
-        MeshSlice *submeshes;
+        SubMesh *submeshes;
         u32 submesh_amount;
 
         char *extra;
@@ -281,6 +290,7 @@ void pool_free(VertexPool* node);
         MeshSlice mesh;
         TextureSlice texture;
         AnimationState *animation;
+        Range range;
     } RenderCall;
 
     typedef struct {

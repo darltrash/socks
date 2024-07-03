@@ -468,12 +468,11 @@ int ren_frame() {
 
         tfx_reset_flags flags = TFX_RESET_NONE;
 
-        if (eng_is_debug()) {
+        if (eng_is_debug())
             flags = 0
                 | TFX_RESET_DEBUG_OVERLAY 
                 | TFX_RESET_DEBUG_OVERLAY_STATS
                 | TFX_RESET_REPORT_GPU_TIMINGS;
-        }
 
         tfx_reset(width, height, flags);
 
@@ -506,6 +505,17 @@ int ren_frame() {
 
         if (!tmp_vertices.data)
             vec_init(&tmp_vertices);
+    }
+
+    #define CALLCHECK() {                         \
+        if (call.disable) continue;               \
+        if (call.tint.a == 0) continue;           \
+                                                  \
+        if (call.texture.w == 0)                  \
+            call.texture.w = texture_main.width;  \
+                                                  \
+        if (call.texture.h == 0)                  \
+            call.texture.h = texture_main.height; \
     }
 
     const f32 aspect = resolution[0] / resolution[1];
@@ -582,21 +592,22 @@ int ren_frame() {
 
     for (u32 i = 0; i < calls.length; i++) {
         RenderCall call = calls.data[i];
-        if (call.disable) continue;
-        if (call.tint.a == 0) continue;
 
-        if (call.texture.w == 0) {
-            call.texture.w = texture_main.width;
-            call.texture.h = texture_main.height;
-        }
+        CALLCHECK()
 
         mat4_mul(m, call.model, view_matrix);
 
-        for (u32 a = 0; a < call.mesh.length; a+=3) {
+        if (!call.range.length)
+            call.range = (Range) {
+                .offset = 0, 
+                .length = call.mesh.length/3
+            };
+
+        for (u32 a = call.range.offset; a < call.range.offset+call.range.length; a++) {
             Triangle tri;
 
             for (u32 b = 0; b < 3; b++) {
-                Vertex vertex = call.mesh.data[a+b];
+                Vertex vertex = call.mesh.data[(a*3)+b];
                 Vertex *copy = &tri.arr[b];
 
                 #define _CCM(a,b) (u8) (((unsigned)a * (unsigned)b + 255u) >> 8)
@@ -659,46 +670,47 @@ int ren_frame() {
     const u16 w = resolution[0] / 2.f;
     const u16 h = resolution[1] / 2.f;
 
-    mat4_ortho(flat_matrix, -w, w, -h, h, 0.001, 10.0);
+    mat4_ortho(flat_matrix, -w, w, -h, h, 1.0, -1.0);
 
     for (u32 i = 0; i < flat_calls.length; i++) {
         RenderCall call = flat_calls.data[i];
 
-        if (call.disable) continue;
-        if (call.tint.a == 0) continue;
-        if (call.mesh.length % 3 != 0) continue;
+        CALLCHECK()
 
-        if (call.texture.w == 0) {
-            call.texture.w = texture_main.width;
-            call.texture.h = texture_main.height;
-        }
+        if (!call.range.length)
+            call.range = (Range) {
+                .offset = 0, 
+                .length = call.mesh.length/3
+            };
 
         mat4_mul(m, call.model, flat_matrix);
 
-        for (u32 j = 0; j < call.mesh.length; j++) {
-            Vertex vertex = call.mesh.data[j];
+        for (u32 t = call.range.offset; t < call.range.offset+call.range.length; t++) {
+            for (u32 j = 0; j < 3; j++) {
+                Vertex vertex = call.mesh.data[(t*3)+j];
 
-            #define _CCM(a,b) (u8) (((unsigned)a * (unsigned)b + 255u) >> 8)
-            #define _CKW(a) ((f32)(a) / (f32)texture_main.width)
-            #define _CKH(a) ((f32)(a) / (f32)texture_main.height)
+                #define _CCM(a,b) (u8) (((unsigned)a * (unsigned)b + 255u) >> 8)
+                #define _CKW(a) ((f32)(a) / (f32)texture_main.width)
+                #define _CKH(a) ((f32)(a) / (f32)texture_main.height)
 
-            Vertex copy = {
-                .uv = {
-                    _CKW(call.texture.w) * vertex.uv[0] + _CKW(call.texture.x),
-                    _CKH(call.texture.h) * vertex.uv[1] + _CKH(call.texture.y)
-                },
+                Vertex copy = {
+                    .uv = {
+                        _CKW(call.texture.w) * vertex.uv[0] + _CKW(call.texture.x),
+                        _CKH(call.texture.h) * vertex.uv[1] + _CKH(call.texture.y)
+                    },
+                };
 
-                .color = {
-                    .r = _CCM(call.tint.r, vertex.color.r),
-                    .g = _CCM(call.tint.g, vertex.color.g),
-                    .b = _CCM(call.tint.b, vertex.color.b),
-                    .a = _CCM(call.tint.a, vertex.color.a)
-                }
-            };
+                u8 fr = _CCM(call.tint.r, vertex.color.r);
+                u8 fg = _CCM(call.tint.g, vertex.color.g);
+                u8 fb = _CCM(call.tint.b, vertex.color.b);
+                u8 fa = _CCM(call.tint.a, vertex.color.a);
 
-            mat4_mulvec(copy.position, vertex.position, m);
+                copy.color = (Color) { fr, fg, fb, fa };
 
-            vec_push(&tmp_vertices, copy);
+                mat4_mulvec(copy.position, vertex.position, m);
+
+                vec_push(&tmp_vertices, copy);
+            }
         }
     }
 

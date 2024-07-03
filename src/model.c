@@ -36,6 +36,14 @@ typedef struct {
 } IQMJoint;
 
 
+typedef struct {
+    uint name;     // unique name for the mesh, if desired
+    uint material; // set to a name of a non-unique material or texture
+    uint first_vertex, num_vertexes;
+    uint first_triangle, num_triangles;
+} IQMMesh;
+
+
 enum
 {
     IQM_POSITION     = 0,
@@ -274,6 +282,20 @@ bool iqm_init(Model *map, const char *data) {
         vertices, animdata, vertex_amount, box
     };
 
+    map->submesh_amount = header.num_meshes;
+
+    map->submeshes = malloc(sizeof(SubMesh) * header.num_meshes);
+    IQMMesh *meshes = (IQMMesh *)&data[header.ofs_meshes];
+
+    for (int i=0; i < header.num_meshes; i++) {
+        IQMMesh mesh = meshes[i];
+        
+        map->submeshes[i] = (SubMesh) {
+            .name = strdup(&data[header.ofs_text+mesh.name]),
+            .range = { mesh.first_triangle, mesh.num_triangles }
+        };
+    }
+
     return false;
 }
 
@@ -329,6 +351,13 @@ void mod_free(Model *model) {
         free(model->mesh.animation);
 
     model->mesh = (MeshSlice) { NULL, NULL, 0, {} };
+
+    if (model->submeshes) {
+        for (int i=0; i < model->submesh_amount; i++)
+            free(model->submeshes[i].name);
+
+        free(model->submeshes);
+    }
 
     // TODO: FREE ANIMATION
 }

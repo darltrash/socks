@@ -1,6 +1,7 @@
 local assets = require "assets"
 local vec3   = require "lib.vec3"
 local mat4   = require "lib.mat4"
+local fam    = require "lib.fam"
 local ui =  {}
 
 -- Monogram by datagoblin! (datagoblin.itch.io/monogram)
@@ -291,6 +292,114 @@ ui.print_center = function (text, x, y, w, h, color)
     local tw, th = ui.text_size(text)
 
     print_naive(text, x+((w-tw)//2), y+((h-th)//2), color)
+end
+
+
+ui.squircle = function (x, y, w, h, color, radius, segments)
+    local mesh = {
+        data = "",
+        length = 0
+    }
+
+    local function push(px, py)
+        local ox = 0 --eng.perlin(px/600, py/600, eng.timer)   * 1.5
+        local oy = 0 --eng.perlin(px/600, py/600, eng.timer/2) * 1.5
+
+        mesh.length = mesh.length + 1
+        mesh.data = mesh.data ..
+            string.pack("<fffffBBBB", px+ox, py+oy, 0, 0, 0, 255, 255, 255, 255)
+    end
+
+    radius = 1 / fam.clamp(radius or 1, 0, 1)
+    segments = segments or 30
+
+    -- Center point of the squircle
+    local cx, cy = x + w / 2, y + h / 2
+
+    local points = {}
+
+    for i = 0, segments do
+        local angle = (i / segments) * (2 * math.pi)
+
+        local cosAngle = math.cos(angle)
+        local sinAngle = math.sin(angle)
+        
+        local factorX = (cosAngle > 0 and 1 or -1) * (math.abs(cosAngle) ^ (1/radius))
+        local factorY = (sinAngle > 0 and 1 or -1) * (math.abs(sinAngle) ^ (1/radius))
+
+        table.insert(points, {
+            cx + factorX * w / 2,
+            cy + factorY * h / 2
+        })
+    end
+
+    -- Create triangles by fanning out from the center
+    for i = 1, #points do
+        local p1 = points[i]
+        local p2 = points[i % #points + 1]
+        push(p1[1], p1[2])
+        push(p2[1], p2[2])
+        push(cx, cy)
+    end
+
+    eng.draw {
+        mesh = mesh,
+        color = color
+    }
+end
+
+ui.funky_rect = function (x, y, w, h, color)
+    local mesh = {
+        data = "",
+        length = 0
+    }
+
+    local function push(px, py)
+        local ox = eng.perlin(px/300, py/300, eng.timer/4) * 3
+        local oy = eng.perlin(px/300, py/300, eng.timer/2) * 3
+
+        mesh.length = mesh.length + 1
+        mesh.data = mesh.data ..
+            string.pack("<fffffBBBB", px+ox, py+oy, 0, 0, 0, 255, 255, 255, 255)
+    end
+
+    push(x,   y)
+    push(x+w, y)
+    push(x, y+h)
+
+    push(x+w, y)
+    push(x, y+h)
+    push(x+w, y+h)
+
+    eng.draw {
+        mesh = mesh,
+        tint = color
+    }
+end
+
+ui.funky_trongle = function (x1, y1, x2, y2, x3, y3, color)
+    local mesh = {
+        data = "",
+        length = 0
+    }
+
+    local function push(px, py)
+        local ox = eng.perlin(px/300, py/300, eng.timer/4) * 3
+        local oy = eng.perlin(px/300, py/300, eng.timer/2) * 3
+
+        mesh.length = mesh.length + 1
+        mesh.data = mesh.data ..
+            string.pack("<fffffBBBB", px+ox, py+oy, 0, 0, 0, 255, 255, 255, 255)
+    end
+
+    push(x1, y1)
+    push(x2, y2)
+    push(x3, y3)
+
+    eng.draw {
+        mesh = mesh,
+        color = color
+    }
 end
 
 return ui

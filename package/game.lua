@@ -4,7 +4,7 @@ local bump = require "lib.bump"
 local json = require "lib.json"
 local fam  = require "lib.fam"
 local bvh  = require "bvh"
-local player = require "player"
+
 local blam = require "blam"
 
 local ui = require "ui"
@@ -12,16 +12,20 @@ local assets = require "assets"
 local entities = require "entities"
 local materials = require "material"
 
+local characters = require "characters"
+
 local ball = {
     position = {0, 0, 0},
     velocity = {0, 0, 0}
 }
 
+local w, h = 450, 350
+
 local state = {
     init = function (self, world)
         eng.ambient(0x19023dff)
         eng.far(80, 0x0c031aff)
-        eng.videomode(500, 400)
+        eng.videomode(w, h)
         --eng.dithering(false)
 
         self.colliders = bump.newWorld()
@@ -640,6 +644,31 @@ local state = {
         eng.quad({416, 0, 16*6, 16*6}, -16*3, -16*3, {255, 255, 255, self.scrunge})
 
         self.scrunge = math.max(0, self.scrunge - delta * 300)
+
+        local m = 10
+        local mx = 70
+        --ui.squircle(-(w/2)+m, 0+m, w-(m*2), (h/2)-(m*2), 0xFF0000FF, 0.1, 14)
+        local hh = 80
+        local rw = w-(m*2)-(mx) - (w/6)
+        ui.funky_rect((-w/2)+m+mx, (h/2)-(hh + m), rw, hh, 0xd4befaFF)
+        
+        --eng.rect(-w/2, -h/2, w, h, 0xFF000088)
+        local g = "* I dislike those fucks who just put lorem ipsum whenever they want to test out UI, stupid ahh\n"
+        g = g .. "* Dumbasses, absolute, evil, insane, not cool, not epic, absolutely."
+        ui.print(g, (-w/2)+(m*2)+mx+66, (h/2)-hh, 0x330033FF, rw-80)
+
+        local y = (h/2)-(160)
+
+        --eng.rect((-w/2)+(m*2)+mx+66, (h/2)-hh-(m/2), rw-80, hh-(m), 0xFF00FFFF)
+
+        eng.draw {
+            mesh = characters.lyu.avatar,
+            range = characters.lyu.avatar.submeshes.shock,
+            model = mat4.from_transform({(-w/2)+m, y-m+4, 1}, {0, 0, math.sin(eng.timer) * 0.01}, 160),
+            texture = {0, 0, 1, 1}
+        }
+
+        --eng.rect((-w/2)+m, y-m+4, 160, 160, 0xFF000066)
     end
 }
 

@@ -142,8 +142,23 @@ static int api_load_model() {
         lua_pushstring(l, model.extra);
         lua_setfield(l, -2, "extra");
     }
+    
+    lua_newtable(l);
+    for (u32 i = 0; i < model.submesh_amount; i++) {
+        SubMesh *submesh = &model.submeshes[i];
+        
+        lua_newtable(l);
+        lua_pushinteger(l, submesh->range.offset);
+        lua_rawseti(l, -2, 1);
+        lua_pushinteger(l, submesh->range.length);
+        lua_rawseti(l, -2, 2);
 
-    free(model.mesh.data);
+        lua_setfield(l, -2, submesh->name);
+    }
+
+    lua_setfield(l, -2, "submeshes");
+
+    mod_free(&model);
 
     return 1;
 }
@@ -224,10 +239,7 @@ static TextureSlice fetch_texture(int a) {
     TextureSlice texture = { 0, 0, 0, 0 };
 
     if (!lua_isnil(l, a)) {
-        if (!lua_istable(l, a)) {
-            luaL_error(l, "Argument must be a table");
-            return texture;
-        }
+        luaL_checktype(l, a, LUA_TTABLE);
 
         static u16 tmp[4];
 
@@ -247,18 +259,35 @@ static TextureSlice fetch_texture(int a) {
     return texture;
 }
 
-// eng.render(render_call)
-static int api_render() {
-    if (!lua_istable(l, 1)) {
-        luaL_error(l, "Argument must be a table");
-        return 0;
+static Range fetch_range(int a) {
+    Range range = { 0, 0 };
+
+    if (!lua_isnil(l, a)) {
+        luaL_checktype(l, a, LUA_TTABLE);
+
+        static u16 tmp[2];
+
+        for (int i = 1; i <= 2; ++i) {
+            lua_rawgeti(l, a, i);
+            luaL_checkinteger(l, -1);
+            tmp[i - 1] = lua_tointeger(l, -1);
+            lua_pop(l, 1);
+        }
+
+        range.offset = tmp[0];
+        range.length = tmp[1];
     }
 
-    RenderCall call = { false, IDENTITY_MATRIX, COLOR_WHITE, {}, {0, 0, 0, 0}, NULL };
+    return range;
+}
+
+
+static int fetch_call(RenderCall *call) {
+    luaL_checktype(l, 1, LUA_TTABLE);
 
     lua_getfield(l, 1, "disable");
     if (!lua_isnil(l, -1))
-        call.disable = lua_toboolean(l, -1);
+        call->disable = lua_toboolean(l, -1);
 
     lua_getfield(l, 1, "model");
     if (!lua_isnil(l, -1)) {
@@ -267,33 +296,57 @@ static int api_render() {
         for (int i=1; i <= 16; i++) {
             lua_pushinteger(l, i);
             lua_gettable(l, -2);
-            call.model[i-1] = (f32)lua_tonumber(l, -1);
+            call->model[i-1] = (f32)lua_tonumber(l, -1);
 
             lua_pop(l, 1);
         }
     }
 
     lua_getfield(l, 1, "tint");
-    call.tint = fetch_color(-1);
+    call->tint = fetch_color(-1);
 
     lua_getfield(l, 1, "mesh");
     if (!lua_istable(l, -1)) {
         luaL_error(l, "'mesh' property must be a table");
-        return 0;
+        return 1;
     }
 
         lua_getfield(l, -1, "data");
-        call.mesh.data = (void*)lua_tostring(l, -1);
+        call->mesh.data = (void*)lua_tostring(l, -1);
         lua_pop(l, 1);
         
         lua_getfield(l, -1, "length");
-        call.mesh.length = lua_tointeger(l, -1);
+        call->mesh.length = lua_tointeger(l, -1);
         lua_pop(l, 1);
 
     lua_getfield(l, 1, "texture");
-    call.texture = fetch_texture(-1);
+    call->texture = fetch_texture(-1);
 
+    lua_getfield(l, 1, "range");
+    call->range = fetch_range(-1);
+
+    return 0;
+}
+
+// eng.render(render_call)
+static int api_render() {
+    RenderCall call = { false, IDENTITY_MATRIX, COLOR_WHITE, {}, {0, 0, 0, 0}, NULL };
+    if (fetch_call(&call))
+        return 0;
+    
     ren_render(call);
+
+    return 0;
+}
+
+// eng.draw(render_call)
+static int api_draw() {
+    RenderCall call = { false, IDENTITY_MATRIX, COLOR_WHITE, {}, {0, 0, 0, 0}, NULL };
+
+    if (fetch_call(&call))
+        return 0;
+    
+    ren_draw(call);
 
     return 0;
 }
@@ -612,6 +665,7 @@ static const luaL_Reg registry[] = {
     { "camera",     api_camera     },
     { "load_model", api_load_model },
     { "render",     api_render     },
+    { "draw",       api_draw       },
     { "light",      api_light      },
     { "far",        api_far        },
     { "dithering",  api_dithering  },
@@ -656,8 +710,6 @@ static const luaL_Reg registry[] = {
 
 
 static int init(void *userdata) {
-    //eng_tickrate(1.0);
-
     u32 length = 0;
     char *boot_lua = fs_read("boot.lua", &length);
     luaL_loadbuffer(l, boot_lua, length, "boot.lua");

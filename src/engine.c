@@ -169,6 +169,9 @@ int eng_main(Application app, const char *arg0) {
   	    SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE
   	);
 
+    if (window == NULL)
+        goto window_init_error;
+
     int ret = 0;
 
     // filesystem.
@@ -307,7 +310,7 @@ int eng_main(Application app, const char *arg0) {
     aud_byebye();
     aud_init_error:
 
-    printf("byebye says the construct.\n");
+    printf("byebye says the illusion.\n");
     ren_byebye();
     ren_init_error:
     fs_init_error:
@@ -321,6 +324,7 @@ int eng_main(Application app, const char *arg0) {
 
     printf("byebye says the window.\n");
     SDL_DestroyWindow(window);
+    window_init_error:
 
     printf("byebye says the world.\n");
     SDL_Quit();

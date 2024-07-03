@@ -80,7 +80,7 @@ local default_toolchain = {
 }
 
 local function compile(setup)
-    --moon()
+    moon()
 
     if not setup.debug then
         pack()
@@ -293,7 +293,7 @@ end
 local function run()
     print("\n!! fast run mode!!! aeeee !!")
 
-    --moon()
+    moon()
 
     check_exec("tcc")
 
@@ -322,7 +322,7 @@ local options = {
     cleanup = cleanup,
     pack = pack,
     run = run,
---    moon = moon,
+    moon = moon,
 
     release = release,
     release_linux = release_linux,
