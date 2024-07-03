@@ -24,9 +24,7 @@ int chdir_to_path(const char *exec_path) {
         return 1;
 
     *last_slash = '\0';
-
-    printf("pathimbuloud %s\n", path);
-
+    
     return chdir(path);
 }
 

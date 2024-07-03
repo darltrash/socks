@@ -735,6 +735,8 @@ static int tick(f64 timestep) {
 
     lua_pop(l, 1);
 
+    printf("tick: %i\n", result);
+
     return result != LUA_OK;
 }
 
@@ -756,6 +758,8 @@ static int frame(f64 alpha, f64 delta) {
     int result = lua_pcall(l, 3, 0, 0);
 
     lua_pop(l, -2);
+
+    printf("frame: %i\n", result);
 
     return result != LUA_OK;
 }
