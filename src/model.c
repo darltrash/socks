@@ -37,10 +37,10 @@ typedef struct {
 
 
 typedef struct {
-    uint name;     // unique name for the mesh, if desired
-    uint material; // set to a name of a non-unique material or texture
-    uint first_vertex, num_vertexes;
-    uint first_triangle, num_triangles;
+    unsigned int name;     // unique name for the mesh, if desired
+    unsigned int material; // set to a name of a non-unique material or texture
+    unsigned int first_vertex, num_vertexes;
+    unsigned int first_triangle, num_triangles;
 } IQMMesh;
 
 
