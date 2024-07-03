@@ -25,6 +25,8 @@ int chdir_to_path(const char *exec_path) {
 
     *last_slash = '\0';
 
+    printf("pathimbuloud %s\n", path);
+
     return chdir(path);
 }
 
@@ -70,6 +72,8 @@ int chdir_to_path(const char *exec_path) {
         zip = zip_open("package.bsk", 0, 'r');
         if (zip) 
             return 0; // If it loaded, then assume that's where the assets are
+
+        printf("No data package could be found! Are you sure you didn't delete anything?\n");
 
         return 1; // We couldn't find anything :/
     }
