@@ -735,9 +735,13 @@ static int tick(f64 timestep) {
 
     lua_pop(l, 1);
 
-    printf("tick: %i\n", result);
+    if (result != LUA_OK) {
+        luaL_traceback(l, l, NULL, 1);
+        printf("FATAL ERROR:\n%s\n", lua_tostring(l, -1));
+        return 1;
+    }
 
-    return result != LUA_OK;
+    return 0;
 }
 
 static int frame(f64 alpha, f64 delta) {
@@ -759,9 +763,13 @@ static int frame(f64 alpha, f64 delta) {
 
     lua_pop(l, -2);
 
-    printf("frame: %i\n", result);
+    if (result != LUA_OK) {
+        luaL_traceback(l, l, NULL, 1);
+        printf("FATAL ERROR:\n%s\n", lua_tostring(l, -1));
+        return 1;
+    }
 
-    return result != LUA_OK;
+    return 0;
 }
 
 static int close(int ret) {
