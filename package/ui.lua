@@ -1,8 +1,9 @@
-local assets = require "assets"
 local vec3   = require "lib.vec3"
 local mat4   = require "lib.mat4"
 local fam    = require "lib.fam"
 local ui =  {}
+
+local plane = eng.load_model "assets/mod_plane.exm"
 
 -- Monogram by datagoblin! (datagoblin.itch.io/monogram)
 ui.font = {
@@ -207,7 +208,7 @@ ui.print = function (text, x, y, color, wrap)
             local w, _, ww = ui.text_size(word)
 
             if (nx+ww) > (x+wrap) then
-                nx = x + 12
+                nx = x
                 ny = ny + LINE_SPACE
             end
 
@@ -243,7 +244,7 @@ local function print_naive_3d(text, vec, color)
         }, 1/16)
 
         eng.render {
-            mesh = assets.plane,
+            mesh = plane,
             model = mat4.from_transform(r, 0, {1, t[3]/16, t[4]/16}),
             texture = t,
             tint = color
@@ -257,11 +258,11 @@ local function print_naive_3d(text, vec, color)
 end
 
 ui.print_3d = function (text, vec, color, wrap)
-    eng.render {
-        mesh = assets.cube,
-        model = mat4.from_transform(vec, 0, 0.1),
-        texture = { 0, 0, 1, 1 }
-    }
+    --eng.render {
+    --    mesh = assets.cube,
+    --    model = mat4.from_transform(vec, 0, 0.1),
+    --    texture = { 0, 0, 1, 1 }
+    --}
 
     local v = vec3.mul_val(vec, 1*16)
     local p = { 0, 0, 0 }

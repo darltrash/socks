@@ -1,5 +1,5 @@
 ```
-  SLEEPYHEAD' source code
+  SLEEPYHEAD's source code
 ```
 
 ## how to build
@@ -38,17 +38,18 @@ sudo apt install -y libsdl2-dev ccache gcc luajit zip upx mingw-w64 git
   - VSCodium
   - Bitwig Studio
   - Blender
-  
+
+
 ## special thanks:
-  - RXI for [json.lua](https://github.com/rxi/json.lua), [vec](https://github.com/rxi/vec) and [json.lua](https://github.com/rxi/ini), huge inspiration to me
+  - God.
+  - RXI for [json.lua](https://github.com/rxi/json.lua), [vec](https://github.com/rxi/vec) and [ini](https://github.com/rxi/ini), huge inspiration to me
   - Sean Barrett for his awesome [STB libraries](https://github.com/nothings/stb)
   - Kikito for [bump.lua](https://github.com/kikito/bump.lua)
   - Oniietzschan for [porting bump.lua to 3D](https://github.com/oniietzschan/bump-3dpd)
   - Shakesoda for [TinyFX](https://github.com/shakesoda/tinyfx), the thing I used to write the renderer
   - Excessive for the [EXM model format and its Blender Addon](https://github.com/excessive/iqm-exm)
   - the Pontifical Catholic University of Rio de Janeiro for [Lua](https://www.lua.org)
-  - The Simple DirectMedia Layer Team for [SDL](https://www.libsdl.org/), the base of my engine (and a lot out there)
+  - The Simple DirectMedia Layer Team for [SDL](https://www.libsdl.org/), the base of my engine (and a lot of engines and tools out there)
   - My dad.
   - My mom.
   - My friends.
-  - My God.

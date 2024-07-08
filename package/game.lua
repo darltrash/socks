@@ -5,7 +5,7 @@ local json = require "lib.json"
 local fam  = require "lib.fam"
 local bvh  = require "bvh"
 
-local blam = require "blam"
+local blam = require "lib.blam"
 
 local ui = require "ui"
 local assets = require "assets"
@@ -31,7 +31,7 @@ local state = {
         self.colliders = bump.newWorld()
 
         self.camera = {
-            distance = 5,
+            distance = 4,
             target = {0, 0, 1},
             instant = false,
 
@@ -64,14 +64,16 @@ local state = {
             "The idiot that wrote this game had a hard time adding the right path. ("..world..")"
         )
 
+        self.world_mesh.submeshes = nil
+
         local vertex_format = "<fff"
         local triangles = {}
 
         for i=1, #self.world_mesh.data, 24 do
             local p1x, p1y, p1z = string.unpack(vertex_format, self.world_mesh.data, i+00)
-            table.insert(triangles, p1x)
-            table.insert(triangles, p1y)
-            table.insert(triangles, p1z)
+            table.insert(triangles, math.floor(p1x*32)/32)
+            table.insert(triangles, math.floor(p1y*32)/32)
+            table.insert(triangles, math.floor(p1z*32)/32)
         end
 
         self.triangles = bvh.new(triangles)
@@ -288,46 +290,46 @@ local state = {
 
 
             -- Handle collision
-            if self.colliders:hasItem(ent) then
-                local new_position = vec3.add(ent.position, ent.velocity)
-                local hs = ent.collider.offset
-                local t = vec3.add(new_position, hs)
-
-                if ent.ghost_mode then
-                    self.colliders:update(ent, t[1], t[2], t[3])
-                    self.velocity = {0, 0, 0}
-                    ent.ghost_mode = false
-                else
-                    local k = {self.colliders:move(ent, t[1], t[2], t[3])}
-
-                    local collisions = k[4]
-                    ent.on_floor = false
-                    for _, col in ipairs(collisions) do
-                        if col.normal.z > 0.5 then
-                            ent.on_floor = true
-                        end
-                    end
-
-                    ent.velocity = vec3.sub(vec3.sub(k, hs, 3), ent.position)
-                end
-            end
-
---            local coll = ent.sphere_collider
---            if coll then
---                local p = vec3.add(ent.position, coll.offset)
---                local _, velocity, planes = blam.response_update(p, ent.velocity, coll.size, query_bvh)
+--            if self.colliders:hasItem(ent) then
+--                local new_position = vec3.add(ent.position, ent.velocity)
+--                local hs = ent.collider.offset
+--                local t = vec3.add(new_position, hs)
 --
---                ent.on_floor = false
+--                if ent.ghost_mode then
+--                    self.colliders:update(ent, t[1], t[2], t[3])
+--                    self.velocity = {0, 0, 0}
+--                    ent.ghost_mode = false
+--                else
+--                    local k = {self.colliders:move(ent, t[1], t[2], t[3])}
 --
---                for _, plane in ipairs(planes) do
---                    if vec3.dot(plane.normal, {0, 0, 1}) > 0.9 then
---                        ent.on_floor = true
---                        break
+--                    local collisions = k[4]
+--                    ent.on_floor = false
+--                    for _, col in ipairs(collisions) do
+--                        if col.normal.z > 0.5 then
+--                            ent.on_floor = true
+--                        end
 --                    end
---                end
 --
---                ent.velocity = velocity
+--                    ent.velocity = vec3.sub(vec3.sub(k, hs, 3), ent.position)
+--                end
 --            end
+
+            local coll = ent.sphere_collider
+            if coll then
+                local p = vec3.add(ent.position, coll.offset)
+                local _, velocity, planes = blam.response_update(p, ent.velocity, coll.size, query_bvh)
+
+                ent.on_floor = false
+
+                for _, plane in ipairs(planes) do
+                    if vec3.dot(plane.normal, {0, 0, 1}) > 0.9 then
+                        ent.on_floor = true
+                        break
+                    end
+                end
+
+                ent.velocity = velocity
+            end
 
             ent.position = vec3.add(ent.position, ent.velocity)
     
@@ -474,16 +476,16 @@ local state = {
                 end
             end
 
---            if ent.sphere_collider then
---                local t = vec3.add(p, ent.sphere_collider.offset)
---                
---                eng.render {
---                    mesh = assets.sphere,
---                    model = mat4.from_transform(t, {0, 0, 0}, ent.sphere_collider.size),
---                    texture = { 0, 0, 1, 1 },
---                    tint = { 255, 255, 255, 255 / 2 }
---                }
---            end
+            if ent.sphere_collider then
+                local t = vec3.add(p, ent.sphere_collider.offset)
+                
+                eng.render {
+                    mesh = assets.sphere,
+                    model = mat4.from_transform(t, {0, 0, 0}, ent.sphere_collider.size),
+                    texture = { 0, 0, 1, 1 },
+                    tint = { 255, 255, 255, 255 / 6 }
+                }
+            end
 
             ::continue::
         end
@@ -545,29 +547,6 @@ local state = {
             eng.camera(cam.lerped, cam.target, { 0, 0, 1 })
 
             eng.listener(cam.target)
---
---            local w, h = eng.size()
---            local x, y = eng.mouse_position()
---
---            local r = vec3.normalize { -1, 0, 0 }
---
---            local triangles = self.triangles:intersectRay(eye, r)
---
---            for _, tri in ipairs(triangles) do
---                local str = ""
---
---                str = str .. string.pack("<fffffBBBB", tri[1]+0.1, tri[2], tri[3], 0, 0, 255, 0, 0, 255)
---                str = str .. string.pack("<fffffBBBB", tri[4]+0.1, tri[5], tri[6], 0, 0, 255, 0, 0, 255)
---                str = str .. string.pack("<fffffBBBB", tri[7]+0.1, tri[8], tri[9], 0, 0, 255, 0, 0, 255)
---                
---                eng.render {
---                    mesh = {
---                        data = str,
---                        length = 3
---                    },
---                    texture = { 0, 0, 1, 1 }
---                }
---            end
         end
 
 
@@ -663,8 +642,8 @@ local state = {
 
         eng.draw {
             mesh = characters.lyu.avatar,
-            range = characters.lyu.avatar.submeshes.shock,
-            model = mat4.from_transform({(-w/2)+m, y-m+4, 1}, {0, 0, math.sin(eng.timer) * 0.01}, 160),
+            range = characters.lyu.avatar.submeshes.weedz,
+            model = mat4.from_transform({(-w/2)+m, y-m+4, 0}, {0, 0, math.sin(eng.timer) * 0.01}, {160, 160, -1}),
             texture = {0, 0, 1, 1}
         }
 

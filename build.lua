@@ -69,7 +69,6 @@ local default_toolchain = {
     cc = "gcc",
     flags = "-lm -lSDL2",
     strip = "strip",
-    upx = false,
     post = false,
     extension = "",
 
@@ -112,7 +111,7 @@ local function compile(setup)
 
     local dir = "out/"..setup.name.."/"
     os.execute("mkdir -p " .. dir)
-    for n in io.popen("find src/*.c lib/*.c -type f"):lines() do
+    for n in io.popen("find basket/ -name \"*.c\" -type f"):lines() do
         local o_name = dir..n:sub(1, #n-2):gsub("/", ".")..".o"
         local c = ("%s %s -c %s -o %s"):format(setup.cc, k, n, o_name)
         print("> compiling '"..n.."'")
@@ -147,7 +146,6 @@ local function compile(setup)
     end
 
     attempt(setup.strip)
-    attempt(setup.upx)
 
     if setup.post then
         print("> post")
@@ -189,16 +187,15 @@ local function release_windows(dbg)
         flags = "-lSDL2",
         strip = "x86_64-w64-mingw32-strip",
         extension = ".exe",
-        upx = false, -- suppress virus warnings :(
         
         debug = dbg,
 
         post = [[
             rm -rf out/socks-win64
             mkdir -p out/socks-win64
-            cp thing.exe        out/socks-win64/socks.exe
-            cp package.bsk         out/socks-win64
-            cp lib/bin/SDL2.dll out/socks-win64
+            cp thing.exe               out/socks-win64/socks.exe
+            cp package.bsk             out/socks-win64
+            cp basket/lib/bin/SDL2.dll out/socks-win64
             cd out/socks-win64
             zip ../socks-win64.zip socks.exe SDL2.dll package.bsk
         ]]
@@ -243,15 +240,16 @@ end
 local function shader()
     -- shittier version of pack(), specific for shaders
 
-    local out = assert(io.open("src/shaders.h", "w"))
+    local out = assert(io.open("basket/shaders.h", "w"))
 
     out:write "// ./build.lua shader\n\n"
 
     print()
 
-    for n in io.popen("find src/shaders/* -type f"):lines() do
+    for n in io.popen("find basket/shaders/* -type f"):lines() do
         io.stdout:write("> Encoding '", n, "' ... ")
 
+        out:write ("// " .. n .. "\n")
         out:write "const char "
         local g = n:match("^.+/(.+)$"):gsub("%W", "_")
         out:write(g)
@@ -268,7 +266,7 @@ local function shader()
             end
         end
 
-        out:write "0\n};\n\n"
+        out:write "0x00\n};\n\n"
 
         io.stdout:write("OK\n")
     end
@@ -300,8 +298,9 @@ local function run()
     local a = "-Ilib/ -lSDL2 -lm -pthread"
     local k = "-DTRASH_DEBUG -DFS_NAIVE_FILES -DSDL_DISABLE_IMMINTRIN_H -DCUTE_SOUND_SCALAR_MODE -DSTBI_NO_SIMD"
 
-    os.execute("tcc "..a.." "..k.." src/*.c lib/*.c -o thing")
-    print("tcc "..a.." "..k.." src/*.c lib/*.c -o thing")
+    local c = "tcc "..a.." "..k.." basket/*.c basket/lib/*.c -o thing"
+    os.execute(c)
+    print(c)
     os.execute("./thing")
 
     print("all is okay! :)")
@@ -310,13 +309,13 @@ end
 local function cleanup()
     print("\n!! cleaning up this ugly garbage !!")
 
-    os.execute("rm -f src/static.h")
+    os.execute("rm -f basket/static.h")
     os.execute("rm -f thing thing.*")
     os.execute("rm -rf package.bsk")
     os.execute("rm -rf out")
 end
 
-print("hey i build stuff hello") 
+print("hey i build stuff hello")
 
 local options = {
     cleanup = cleanup,

@@ -3,7 +3,6 @@ local fam  = require "lib.fam"
 local assets = require "assets"
 
 local player = require "player"
-local skelington = require "skelington"
 
 local init = {
     player = player.init,
@@ -77,9 +76,7 @@ local init = {
         ent.particle_timer = 0
         ent.floats = true
         ent.tint = {255, 255, 255, 255}
-    end,
-
-    skelington = skelington.init
+    end
 }
 
 local tick = {
@@ -303,9 +300,7 @@ local tick = {
 
             ent.particle_timer = 0
         end
-    end,
-
-    skelington = skelington.tick
+    end
 }
 
 return {

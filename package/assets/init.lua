@@ -17,7 +17,7 @@ return {
     transition_out = eng.load_sound("assets/snd_transition_out.ogg"),
     --crocodile_music_for_their_non_existant_ears = eng.load_sound("assets/mus_crocodile.ogg")
 
-    wereflying = eng.load_sound("assets/mus_wereflying.ogg", true),
+    --wereflying = eng.load_sound("assets/mus_wereflying.ogg", true),
 
     city = eng.load_sound("assets/amb_city.ogg")
 }

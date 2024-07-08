@@ -86,5 +86,5 @@ if os.getenv("BSKT_LEVEL_VIEW") then
     return
 end
 
--- try to load the game 
+-- try to load the game
 xpcall(require, on_error, "game")

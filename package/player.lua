@@ -114,7 +114,7 @@ local switch = {
         end
 
         if not checkpoint then
-            checkpoint = vec3.add(ent.position, {0, 0, 2})
+            checkpoint = vec3.add(ent.position, {0, -1, 1})
         end
 
         ent.texture = fam.loop_index(player_animation, ent.animation_timer)
@@ -248,7 +248,7 @@ return {
         
         ent.sphere_collider = {
             offset = { 0, 0, 1.1 },
-            size = { 1, 0.5, 0.9 }
+            size   = { 1, 1, 1 }
         }
 
         ent.state = ent.state or "on_air"
