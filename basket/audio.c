@@ -72,7 +72,6 @@ int aud_load_ogg(Sound *sound, const u8 *mem, u32 len, bool spatialize) {
 int aud_init_source(Source *source, Sound audio) {
     alGenSources(1, source);
     alSourcei(*source, AL_BUFFER, audio);
-
     return 0;
 }
 

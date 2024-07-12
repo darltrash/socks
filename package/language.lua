@@ -65,6 +65,27 @@ TO STOP GOING TO STARBUCKS, GET MAD! GET ANGRY! FIGHT FOR THE INDEPENDENCE OF HU
 OF THE LONELY, GO OUT AND CONSUME INDEPENDENT CONTENT, HELP INDEPENDENT CREATORS, OUR ONLY HOPE IS IN LOVE. 
 
 DO YOU REALLY LIKE CHEESE? OR ARE YOU JUST A CHEESE POSER? ARE YOU HAPPIER OR SADDER?
+
+I REALLY LIKE 20SYL'S MUSIC, IT'S REALLY GOOD, 20SYL'S PRODUCTION IS NEXT LEVEL.
+I ALSO REALLY THINK KENDRICK WON THE BEEF, BUT THAT'S NOT AN UNPOPULAR OPINION.
+KENNY DISSOLVED THAT CANADIAN DRIZZY.
+
+PUNK ASS MOFO, ALL POWER, NO GAIN!
+
+SUGAR IS SWEET, YOU ARE THE BEST, I LOVE YOU A LOT, YOU ARE VERY COOL!
+SUNGAZER IS MY FAVE JAZZ BAND, I ALSO LOVE THE WAY SUNGAZER MAKES MUSIC!
+
+KNEIL!
+
+FUN IS THE THING THAT KEEPS US LIVING, ISN'T IT?
+IT'S ALL FOR FUN AND LOVE
+
+THE VESSEL AS FOR WHICH WE FIGHT AND POUR OUR LOVE INTO.
+THE VESSEL WE USE FOR FINDING OURSELVES.
+THE VESSEL I MADE, FOR FUN.
+
+I MADE YOU SPECIAL.
+I MADE YOU AS A VESSEL FOR FUN.
 ]]
 
 -- Function to split text into words
@@ -96,11 +117,9 @@ local function build_markov_chain(text)
 end
 
 -- Function to generate a random sentence using the Markov chain
-local function generate_sentence(markov_chain, max_words)
-    math.randomseed(os.clock())
-
-    local current_word = "I"  -- Starting word
-    local sentence = current_word
+local function generate_sentence(markov_chain, starting_word, max_words)
+    local current_word = starting_word:match("%S+$") -- Starting word
+    local sentence = starting_word
     
     for _ = 1, max_words do
         local next_words = markov_chain[current_word]
@@ -118,7 +137,52 @@ local function generate_sentence(markov_chain, max_words)
     return sentence
 end
 
+local function split_into_syllables(word)
+    local vowels = "aeiouAEIOU"
+    local syllables = {}
+    local current_syllable = ""
+
+    local function is_vowel(char)
+        return string.find(vowels, char, 1, true) ~= nil
+    end
+
+    local function end_syllable()
+        if current_syllable ~= "" then
+            local past = syllables[#syllables]
+            if past and (#past == 1 or #current_syllable < 2) then
+                syllables[#syllables] = past .. current_syllable
+                current_syllable = ""
+                return
+            end
+            table.insert(syllables, current_syllable)
+            current_syllable = ""
+        end
+
+    end
+
+    for i = 1, #word do
+        local char = string.sub(word, i, i)
+
+        if is_vowel(string.sub(word, i+1, i+1)) or char == " " then
+            end_syllable()
+            current_syllable = char
+        else
+            current_syllable = current_syllable .. char
+        end
+    end
+
+    end_syllable()
+
+    return syllables
+end
+
 -- Example usage
 local markov_chain = build_markov_chain(sample_text)
-local generated_sentence = generate_sentence(markov_chain, 50)
-print(generated_sentence)
+
+return {
+    markov = function (start, words)
+        return generate_sentence(markov_chain, start, words)
+    end,
+    
+    syllabify = split_into_syllables
+}

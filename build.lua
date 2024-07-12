@@ -1,7 +1,7 @@
 #!/usr/bin/env luajit
 
 local function exec(...)
-    local t = table.concat({...}, " ")
+    local t = table.concat({ ... }, " ")
     print(t)
     local a = assert(io.popen(t))
     local t = a:read("*a")
@@ -12,17 +12,17 @@ end
 
 local function check_exec(name)
     local a = exec("whereis " .. name)
-    if #a == (#name+2) then
-        error("program '"..name.."' wasnt found in $PATH! go get it checked and installed :/\n", 2)
+    if #a == (#name + 2) then
+        error("program '" .. name .. "' wasnt found in $PATH! go get it checked and installed :/\n", 2)
     end
 end
 
 local function opt_exec(name)
     local a = exec("whereis " .. name)
-    return #a ~= (#name+2)
+    return #a ~= (#name + 2)
 end
 
-if package.config:sub(1,1) ~= "/" then
+if package.config:sub(1, 1) ~= "/" then
     print("note!! this program wasnt made with windows on mind, so expect it to break.\n")
 end
 
@@ -37,7 +37,7 @@ end
 
 local packed_stuff = false
 
-local pack = function ()
+local pack = function()
     if packed_stuff then return end
 
     os.execute [[
@@ -65,7 +65,7 @@ end
 
 local default_toolchain = {
     name = "unknown",
-    
+
     cc = "gcc",
     flags = "-lm -lSDL2",
     strip = "strip",
@@ -88,7 +88,7 @@ local function compile(setup)
     setmetatable(setup, { __index = default_toolchain })
 
     local t = setup.debug and "debug" or "release"
-    print("\nbuilding using the '"..setup.name.."' ("..t..") target")
+    print("\nbuilding using the '" .. setup.name .. "' (" .. t .. ") target")
 
     check_exec(setup.cc)
 
@@ -97,9 +97,9 @@ local function compile(setup)
         setup.cc = "ccache " .. setup.cc
     end
 
-    local k = "-Ilib/ -Wstringop-overflow=0 -D_POSIX_C_SOURCE=200809L --std=c99 -DBASKET_COMMIT='\""..commit.."\"' "
+    local k = "-Ilib/ -Wstringop-overflow=0 -D_POSIX_C_SOURCE=200809L --std=c99 -DBASKET_COMMIT='\"" .. commit .. "\"' "
         .. (setup.file_flags or "")
-    
+
     local optimizations = "-fdata-sections -ffunction-sections -Wl,--gc-sections"
     if setup.debug then
         k = k .. " -ggdb -DTFX_DEBUG -DTRASH_DEBUG"
@@ -109,12 +109,12 @@ local function compile(setup)
         k = k .. " -Ofast"
     end
 
-    local dir = "out/"..setup.name.."/"
+    local dir = "out/" .. setup.name .. "/"
     os.execute("mkdir -p " .. dir)
     for n in io.popen("find basket/ -name \"*.c\" -type f"):lines() do
-        local o_name = dir..n:sub(1, #n-2):gsub("/", ".")..".o"
+        local o_name = dir .. n:sub(1, #n - 2):gsub("/", ".") .. ".o"
         local c = ("%s %s -c %s -o %s"):format(setup.cc, k, n, o_name)
-        print("> compiling '"..n.."'")
+        print("> compiling '" .. n .. "'")
         exec(c)
         print()
     end
@@ -123,7 +123,7 @@ local function compile(setup)
 
 
     print("> linking")
-    exec(setup.cc, optimizations, dir.."*.o", setup.flags, "-o", output)
+    exec(setup.cc, optimizations, dir .. "*.o", setup.flags, "-o", output)
     print()
 
     local function attempt(what)
@@ -141,7 +141,7 @@ local function compile(setup)
         end
 
         exec(what, output)
-    
+
         io.stdout:write(" ... ok!\n")
     end
 
@@ -159,7 +159,7 @@ end
 local function release_linux(dbg)
     compile {
         name = "x86_64-linux-host",
-    
+
         cc = os.getenv("CC") or "gcc",
         strip = "strip",
         flags = "-lm -lSDL2 -lc -ldl",
@@ -179,7 +179,7 @@ end
 
 local function release_windows(dbg)
     check_exec("zip")
-    
+
     compile {
         name = "x86_64-windows-gnu",
 
@@ -187,7 +187,7 @@ local function release_windows(dbg)
         flags = "-lSDL2",
         strip = "x86_64-w64-mingw32-strip",
         extension = ".exe",
-        
+
         debug = dbg,
 
         post = [[
@@ -249,7 +249,7 @@ local function shader()
     for n in io.popen("find basket/shaders/* -type f"):lines() do
         io.stdout:write("> Encoding '", n, "' ... ")
 
-        out:write ("// " .. n .. "\n")
+        out:write("// " .. n .. "\n")
         out:write "const char "
         local g = n:match("^.+/(.+)$"):gsub("%W", "_")
         out:write(g)
@@ -298,7 +298,7 @@ local function run()
     local a = "-Ilib/ -lSDL2 -lm -pthread"
     local k = "-DTRASH_DEBUG -DFS_NAIVE_FILES -DSDL_DISABLE_IMMINTRIN_H -DCUTE_SOUND_SCALAR_MODE -DSTBI_NO_SIMD"
 
-    local c = "tcc "..a.." "..k.." basket/*.c basket/lib/*.c -o thing"
+    local c = "tcc " .. a .. " " .. k .. " basket/*.c basket/lib/*.c -o thing"
     os.execute(c)
     print(c)
     os.execute("./thing")
@@ -336,7 +336,7 @@ local options = {
     shader = shader
 }
 
-options.help = function ()
+options.help = function()
     local g = {}
     for name in pairs(options) do
         table.insert(g, name)
@@ -354,7 +354,7 @@ end
 
 local f = options[opt]
 if not f then
-    print("darn, idk what '"..opt.."' is")
+    print("darn, idk what '" .. opt .. "' is")
     options.help()
 end
 

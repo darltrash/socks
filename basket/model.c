@@ -91,6 +91,27 @@ typedef struct {
   unsigned int flags;
 } IQMAnim;
 
+static int compare_triangles_2D(const void *a, const void *b) {
+    const Triangle t_a = *(const Triangle *)a;
+    const Triangle t_b = *(const Triangle *)b;
+    
+    f32 avg_z_a = (
+            t_a.a.position[2] + 
+            t_a.b.position[2] + 
+            t_a.c.position[2]
+        ) / 3.0f;
+
+    f32 avg_z_b = (
+            t_b.a.position[2] + 
+            t_b.b.position[2] + 
+            t_b.c.position[2]
+        ) / 3.0f;
+
+    if (avg_z_a < avg_z_b) return 1;
+    if (avg_z_a > avg_z_b) return -1;
+    return 0;
+}
+
 bool iqm_init(Model *map, const char *data) {
     IQMHeader header = *(IQMHeader *)data;
 
@@ -182,15 +203,15 @@ bool iqm_init(Model *map, const char *data) {
                 .a = colors[k].r,
             };
 
-            //o.color.r -= (u8)(rand()) % 8;
-            //o.color.g -= (u8)(rand()) % 8;
-            //o.color.b -= (u8)(rand()) % 8;
+            //o.color.r = min(255, max(0, (int)o.color.r - (rand() % 8)));
+            //o.color.g = min(255, max(0, (int)o.color.g - (rand() % 8)));
+            //o.color.b = min(255, max(0, (int)o.color.b - (rand() % 8)));
         }
-
-
 
         vertices[i] = o;
     }
+
+    //qsort(vertices, header.num_triangles/3, sizeof(Triangle), compare_triangles_2D);
 
     if (header.num_joints && blend_indices) {
         animdata = falloc(VertexAnim, vertex_amount);

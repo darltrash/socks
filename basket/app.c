@@ -12,6 +12,8 @@
 
 static lua_State *l;
 
+static int api_noop() { return 0; }
+
 static void get_vector(f32 *out, int tableIndex, int len) {
     luaL_checktype(l, tableIndex, LUA_TTABLE);
 
@@ -705,6 +707,10 @@ static const luaL_Reg registry[] = {
 
     { "exit", api_exit },
 
+    { "tick",  api_noop },
+    { "frame", api_noop },
+    { "close", api_noop },
+
     { NULL, NULL }
 };
 
@@ -761,6 +767,13 @@ static int frame(f64 alpha, f64 delta) {
 }
 
 static int close(int ret) {
+    lua_getglobal(l, "eng");
+    lua_getfield(l, -1, "close");
+
+    int result = lua_pcall(l, 0, 0, 0);
+
+    lua_pop(l, 1);
+
     lua_close(l);
 
     return 0;
@@ -821,6 +834,15 @@ int main(int argc, char *argv[]) {
         lua_pushstring(l, "unknown");
     #endif
     lua_setfield(l, -2, "os");
+
+    
+    lua_newtable(l);
+    for (int i = 0; i < argc; i++) {
+        lua_pushnumber(l, i);
+        lua_pushstring(l, argv[i]);
+        lua_settable(l, -3);
+    }
+    lua_setfield(l, -2, "args");
 
 
     lua_pushboolean(l, eng_is_debug());

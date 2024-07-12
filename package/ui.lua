@@ -311,7 +311,7 @@ ui.squircle = function (x, y, w, h, color, radius, segments)
             string.pack("<fffffBBBB", px+ox, py+oy, 0, 0, 0, 255, 255, 255, 255)
     end
 
-    radius = 1 / fam.clamp(radius or 1, 0, 1)
+    radius = 1 / fam.clamp(radius or 0.1, 0, 1)
     segments = segments or 30
 
     -- Center point of the squircle

@@ -23,7 +23,7 @@ local on_error = function(err)
 
     eng.set_room {
         frame = function ()
-            eng.far(0, 0x00000000) 
+            eng.far(0, 0x00000000)
             local str = "FATAL ERROR:"
             local w = ui.text_size(str)
 

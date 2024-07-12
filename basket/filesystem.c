@@ -1,5 +1,6 @@
 // implement the simplest freaking little filesystem system thing
 
+#include <SDL2/SDL_rwops.h>
 #define BASKET_INTERNAL
 #include "basket.h"
 #include <stdio.h>
@@ -62,14 +63,24 @@ int chdir_to_path(const char *exec_path) {
         if (chdir_to_path(self))
             return 1;
 
+        // Check if BASKET_PACKAGE is not NULL
+        const char *name = getenv("BASKET_PACKAGE");
+        
+        if (name != NULL) {
+            // Try loading a zip file at $BASKET_PACKAGE
+            zip = zip_open(name, 0, 'r');
+            if (zip) 
+                return 0; // Found our assets in $BASKET_PACKAGE
+        }
+
         // If ./package/ is a valid directory we can CD into
         if (!chdir("package"))
-            return 0;           // then we assume that's where the assets are
+            return 0; // Found our assets in ./package/
 
         // Try loading a zip file at ./package.bsk
         zip = zip_open("package.bsk", 0, 'r');
         if (zip) 
-            return 0; // If it loaded, then assume that's where the assets are
+            return 0; // Found our assets in ./package.bsk
 
         printf("No data package could be found! Are you sure you didn't delete anything?\n");
 
@@ -125,6 +136,11 @@ int chdir_to_path(const char *exec_path) {
         return fs_read_folder(name, size);
     }
 
+    void fs_byebye() {
+        if (zip)
+            zip_close(zip);
+    }
+
 #endif
 
 
@@ -168,4 +184,9 @@ char *sav_retrieve(u32 *length) {
     ops->read(ops, data, 1, size);
 
     return data;
+}
+
+void sav_byebye() {
+    if (ops)
+        SDL_RWclose(ops);
 }

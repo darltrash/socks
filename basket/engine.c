@@ -17,8 +17,8 @@ static f64 hz;
 static bool running = true;
 static bool focused = true;
 
-static u16 window_width  = 840;
-static u16 window_height = 630;
+static u16 window_width  = 960;
+static u16 window_height = 700;
 static u16 mouse_x = 0;
 static u16 mouse_y = 0;
 static bool mouse_button[3];

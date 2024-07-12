@@ -4,6 +4,7 @@ local bump = require "lib.bump"
 local json = require "lib.json"
 local fam  = require "lib.fam"
 local bvh  = require "bvh"
+local dialog = require "dialog"
 
 local blam = require "lib.blam"
 
@@ -11,8 +12,6 @@ local ui = require "ui"
 local assets = require "assets"
 local entities = require "entities"
 local materials = require "material"
-
-local characters = require "characters"
 
 local ball = {
     position = {0, 0, 0},
@@ -56,6 +55,8 @@ local state = {
         self.easter_time = 5
         self.easter_bunny = ""
         self.easter_eggs = {}
+
+        self.script = coroutine.create(require("scripts.pandatest"))
 
         world = world or "assets/lvl_hometown.exm"
 
@@ -255,6 +256,8 @@ local state = {
 --            end
 --        end
 
+        dialog.tick()
+
         for x=#self.entities, 1, -1 do
             local ent = self.entities[x]
     
@@ -290,46 +293,46 @@ local state = {
 
 
             -- Handle collision
---            if self.colliders:hasItem(ent) then
---                local new_position = vec3.add(ent.position, ent.velocity)
---                local hs = ent.collider.offset
---                local t = vec3.add(new_position, hs)
---
---                if ent.ghost_mode then
---                    self.colliders:update(ent, t[1], t[2], t[3])
---                    self.velocity = {0, 0, 0}
---                    ent.ghost_mode = false
---                else
---                    local k = {self.colliders:move(ent, t[1], t[2], t[3])}
---
---                    local collisions = k[4]
---                    ent.on_floor = false
---                    for _, col in ipairs(collisions) do
---                        if col.normal.z > 0.5 then
---                            ent.on_floor = true
---                        end
---                    end
---
---                    ent.velocity = vec3.sub(vec3.sub(k, hs, 3), ent.position)
---                end
---            end
+            if self.colliders:hasItem(ent) then
+                local new_position = vec3.add(ent.position, ent.velocity)
+                local hs = ent.collider.offset
+                local t = vec3.add(new_position, hs)
 
-            local coll = ent.sphere_collider
-            if coll then
-                local p = vec3.add(ent.position, coll.offset)
-                local _, velocity, planes = blam.response_update(p, ent.velocity, coll.size, query_bvh)
+                if ent.ghost_mode then
+                    self.colliders:update(ent, t[1], t[2], t[3])
+                    self.velocity = {0, 0, 0}
+                    ent.ghost_mode = false
+                else
+                    local k = {self.colliders:move(ent, t[1], t[2], t[3])}
 
-                ent.on_floor = false
-
-                for _, plane in ipairs(planes) do
-                    if vec3.dot(plane.normal, {0, 0, 1}) > 0.9 then
-                        ent.on_floor = true
-                        break
+                    local collisions = k[4]
+                    ent.on_floor = false
+                    for _, col in ipairs(collisions) do
+                        if col.normal.z > 0.5 then
+                            ent.on_floor = true
+                        end
                     end
-                end
 
-                ent.velocity = velocity
+                    ent.velocity = vec3.sub(vec3.sub(k, hs, 3), ent.position)
+                end
             end
+
+--            local coll = ent.sphere_collider
+--            if coll then
+--                local p = vec3.add(ent.position, coll.offset)
+--                local _, velocity, planes = blam.response_update(p, ent.velocity, coll.size, query_bvh)
+--
+--                ent.on_floor = false
+--
+--                for _, plane in ipairs(planes) do
+--                    if vec3.dot(plane.normal, {0, 0, 1}) > 0.9 then
+--                        ent.on_floor = true
+--                        break
+--                    end
+--                end
+--
+--                ent.velocity = velocity
+--            end
 
             ent.position = vec3.add(ent.position, ent.velocity)
     
@@ -363,6 +366,14 @@ local state = {
         self.entities.buffer = {}
 
         self.kill_em_guys = false
+
+        if self.script then
+            local ok, err = coroutine.resume(self.script)
+            if not ok then
+                self.script = nil
+                print("SCRIPT FINISHED: " .. err)
+            end
+        end
     end,
 
     frame = function (self, alpha, delta)
@@ -476,16 +487,16 @@ local state = {
                 end
             end
 
-            if ent.sphere_collider then
-                local t = vec3.add(p, ent.sphere_collider.offset)
-                
-                eng.render {
-                    mesh = assets.sphere,
-                    model = mat4.from_transform(t, {0, 0, 0}, ent.sphere_collider.size),
-                    texture = { 0, 0, 1, 1 },
-                    tint = { 255, 255, 255, 255 / 6 }
-                }
-            end
+--            if ent.sphere_collider then
+--                local t = vec3.add(p, ent.sphere_collider.offset)
+--                
+--                eng.render {
+--                    mesh = assets.sphere,
+--                    model = mat4.from_transform(t, {0, 0, 0}, ent.sphere_collider.size),
+--                    texture = { 0, 0, 1, 1 },
+--                    tint = { 255, 255, 255, 255 / 6 }
+--                }
+--            end
 
             ::continue::
         end
@@ -620,32 +631,8 @@ local state = {
             end
         end
 
-        eng.quad({416, 0, 16*6, 16*6}, -16*3, -16*3, {255, 255, 255, self.scrunge})
+        dialog.frame(delta)
 
-        self.scrunge = math.max(0, self.scrunge - delta * 300)
-
-        local m = 10
-        local mx = 70
-        --ui.squircle(-(w/2)+m, 0+m, w-(m*2), (h/2)-(m*2), 0xFF0000FF, 0.1, 14)
-        local hh = 80
-        local rw = w-(m*2)-(mx) - (w/6)
-        ui.funky_rect((-w/2)+m+mx, (h/2)-(hh + m), rw, hh, 0xd4befaFF)
-        
-        --eng.rect(-w/2, -h/2, w, h, 0xFF000088)
-        local g = "* I dislike those fucks who just put lorem ipsum whenever they want to test out UI, stupid ahh\n"
-        g = g .. "* Dumbasses, absolute, evil, insane, not cool, not epic, absolutely."
-        ui.print(g, (-w/2)+(m*2)+mx+66, (h/2)-hh, 0x330033FF, rw-80)
-
-        local y = (h/2)-(160)
-
-        --eng.rect((-w/2)+(m*2)+mx+66, (h/2)-hh-(m/2), rw-80, hh-(m), 0xFF00FFFF)
-
-        eng.draw {
-            mesh = characters.lyu.avatar,
-            range = characters.lyu.avatar.submeshes.weedz,
-            model = mat4.from_transform({(-w/2)+m, y-m+4, 0}, {0, 0, math.sin(eng.timer) * 0.01}, {160, 160, -1}),
-            texture = {0, 0, 1, 1}
-        }
 
         --eng.rect((-w/2)+m, y-m+4, 160, 160, 0xFF000066)
     end

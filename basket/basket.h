@@ -51,7 +51,7 @@ typedef int8_t  i8;
         Color color;
     } Vertex;
 
-    typedef union{ 
+    typedef union { 
         struct {
             Vertex a, b, c;
         };

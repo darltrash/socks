@@ -424,6 +424,29 @@ void ren_mouse_position(i16 *x, i16 *y) {
     // TODO: ADD NON_FILL MODE
 }
 
+
+static int compare_triangles_2D(const void *a, const void *b) {
+    const Triangle t_a = *(const Triangle *)a;
+    const Triangle t_b = *(const Triangle *)b;
+    
+    f32 avg_z_a = (
+            t_a.a.position[2] + 
+            t_a.b.position[2] + 
+            t_a.c.position[2]
+        ) / 3.0f;
+
+    f32 avg_z_b = (
+            t_b.a.position[2] + 
+            t_b.b.position[2] + 
+            t_b.c.position[2]
+        ) / 3.0f;
+
+    if (avg_z_a < avg_z_b) return 1;
+    if (avg_z_a > avg_z_b) return -1;
+    return 0;
+}
+
+
 int ren_frame() {
     static tfx_canvas canvas;
     static Frustum frustum;
@@ -694,6 +717,10 @@ int ren_frame() {
 
     if (tmp_vertices.length % 3 != 0)
         printf("?\n");
+
+    //qsort(tmp_vertices.data, tmp_vertices.ca)
+
+    qsort(tmp_vertices.data, tmp_vertices.length / 3, sizeof(Triangle), compare_triangles_2D);
 
     tfx_transient_buffer quad_buffer = tfx_transient_buffer_new(&vertex_format, tmp_vertices.length);
     memcpy(quad_buffer.data, tmp_vertices.data, tmp_vertices.length * sizeof(Vertex));

@@ -12,7 +12,7 @@
         color = vx_color;
         uv = vx_uv;
         vec2 pos = vx_position.xy / (resolution / 2.0);
-        gl_Position = vec4(pos * vec2(1.0, -1.0), -vx_position.z/5.0, 1.0);
+        gl_Position = vec4(pos * vec2(1.0, -1.0), vx_position.z/5.0, 1.0);
     }
 #endif
 
