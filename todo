@@ -1,12 +1,12 @@
-- Figure out texture packing
 - Figure out a way to do gradient backgrounds
-- Figure out a way to make blam.lua work
+- Fix blam.lua
 - Figure out a way to script out each entity
 - Model more of the city Model
 - Figure out if you can fix Z fight without breaking GLES2 compat
 - Finish Cami Flowers' theme song, probably take some inspiration from other music?
 - Call dad for today
-- Investigate if whether to port collision and bvh math
+- Finish math API
+- Investigate if whether to port collision and bvh math to C
     Benefits:
     - Much faster math
     - Much less memory
@@ -17,9 +17,9 @@
         - Probably make a render_pool function!
         - Bake in matrix math onto the render_pool-ed model?
     - Figure out exactly how to encode the pool type to a basic lua type, hopefully
-- Finish math API
 
 
 NOT NECESSARY YET:
+- Figure out texture packing
 - Finish Lua API
 - Figure out how to handle ren_camera better

@@ -19,9 +19,6 @@ static bool focused = true;
 
 static u16 window_width  = 960;
 static u16 window_height = 700;
-static u16 mouse_x = 0;
-static u16 mouse_y = 0;
-static bool mouse_button[3];
 static bool is_debug = false;
 
 void event(SDL_Event event, SDL_Window *window) {
@@ -45,22 +42,6 @@ void event(SDL_Event event, SDL_Window *window) {
 
                 default: break;
             }
-            break;
-        }
-
-        case SDL_MOUSEMOTION: {
-            mouse_x = event.motion.x;   
-            mouse_y = event.motion.y;
-            break;
-        }
-
-        case SDL_MOUSEBUTTONDOWN: {
-            mouse_button[event.button.button % 3] = true;
-            break;
-        }
-
-        case SDL_MOUSEBUTTONUP: {
-            mouse_button[event.button.button % 3] = false;
             break;
         }
 
@@ -96,6 +77,7 @@ void eng_close() {
     running = false;
 }
 
+
 // TODO: This shit is not future proof.
 void eng_window_size(u16 *w, u16 *h) {
     if (w != NULL)
@@ -105,17 +87,6 @@ void eng_window_size(u16 *w, u16 *h) {
         *h = window_height;
 }
 
-void eng_mouse_position(u16 *x, u16 *y) {
-    if (x != NULL)
-        *x = mouse_x;
-
-    if (y != NULL)
-        *y = mouse_y;
-}
-
-bool eng_mouse_down(u8 button) {
-    return mouse_button[button % 3];
-}
 
 void eng_tickrate(f64 _hz) {
     hz = _hz;

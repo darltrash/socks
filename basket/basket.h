@@ -13,13 +13,12 @@ typedef int64_t i64;
 typedef int32_t i32;
 typedef int16_t i16;
 typedef int8_t  i8;
- 
+
 /*
     Basket design rules/style:
     - Assume people will build their software around Basket, as a framework
     - Null output (in case of arrays/pointers) or non-zero (true) equals error.
-    - snake_case for variables
-    - camelCase for functions
+    - snake_case for functions and variables
     - PascalCase for types (except for number types)
     - (const) char* for strings, not u8*
     - Share the same header for programs and internals
@@ -34,7 +33,7 @@ typedef int8_t  i8;
 
 
 // General //////////////////////////////////////////////////////
-    typedef union { 
+    typedef union {
         struct { u8 a, b, g, r; };
         u8 array[4];
         u32 full;
@@ -51,7 +50,7 @@ typedef int8_t  i8;
         Color color;
     } Vertex;
 
-    typedef union { 
+    typedef union {
         struct {
             Vertex a, b, c;
         };
@@ -92,7 +91,7 @@ typedef int8_t  i8;
         BSKT_SAV_COULDNT_SAVE,
 
         BSKT_MOD_UNRECOGNIZED_FORMAT,
-        
+
         BSKT_AUD_,
 
         BSKT_IMG_COULDNT_LOAD_IMAGE,
@@ -146,7 +145,7 @@ typedef int8_t  i8;
     typedef struct {
         Bone *bones;
         u32 bone_amount;
-        
+
         Animation *animations;
         u32 animation_amount;
 
@@ -309,14 +308,14 @@ void pool_free(VertexPool* node);
     #define LIGHT_AMOUNT 32
 
     void ren_log(const char *str, ...);
-    
+
     RenderCall *ren_render(RenderCall call);
     void ren_light(Light);
-    
+
     RenderCall *ren_draw(RenderCall call);
     void ren_quad(Quad quad);
     void ren_rect(i32 x, i32 y, u32 w, u32 h, Color color);
-    
+
     void ren_camera(f32 from[3], f32 to[3], f32 up[3]);
     void ren_far(f32 far, Color clear);
     void ren_ambient(Color ambient);
@@ -358,7 +357,10 @@ void pool_free(VertexPool* node);
     const char *inp_text();
     void inp_clear();
     u32 inp_button(u8 button);
-    
+
+    void inp_mouse_position(u16 *x, u16 *y);
+    bool inp_mouse_down(u8 button);
+
     bool inp_register_scancode(const char *scancode, u8 button);
     bool inp_register_keycode(const char *keycode, u8);
     const char *inp_get_key(u8 button);
@@ -377,7 +379,7 @@ void pool_free(VertexPool* node);
         int (*frame) (f64 alpha, f64 delta);
         int (*tick)  (f64 timestep);
         int (*close) (int ret);
-    } Application; 
+    } Application;
 
 
     int  eng_main(Application app, const char *arg0);
@@ -386,8 +388,6 @@ void pool_free(VertexPool* node);
     void eng_tickrate(f64 hz);
 
     void eng_window_size(u16 *w, u16 *h); // TODO: This shit is not future proof.
-    void eng_mouse_position(u16 *x, u16 *y);
-    bool eng_mouse_down(u8 button);
 
     bool eng_is_focused();
     void eng_set_debug(bool debug);

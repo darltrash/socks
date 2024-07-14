@@ -22,6 +22,9 @@ typedef struct {
 static vec_t(InputBinding) bindings;
 
 static char text[32];
+static u16 mouse_x = 0;
+static u16 mouse_y = 0;
+static bool mouse_button[8];
 
 int inp_init() {
     if (bindings.data) 
@@ -73,8 +76,38 @@ void inp_event(SDL_Event event) {
             break;
         }
 
+        case SDL_MOUSEMOTION: {
+            mouse_x = event.motion.x;   
+            mouse_y = event.motion.y;
+            break;
+        }
+
+        case SDL_MOUSEBUTTONDOWN: {
+            mouse_button[event.button.button % 8] = true;
+            break;
+        }
+
+        case SDL_MOUSEBUTTONUP: {
+            mouse_button[event.button.button % 8] = false;
+            break;
+        }
+
+
         default: break;
     }
+}
+
+
+void inp_mouse_position(u16 *x, u16 *y) {
+    if (x != NULL)
+        *x = mouse_x;
+
+    if (y != NULL)
+        *y = mouse_y;
+}
+
+bool inp_mouse_down(u8 button) {
+    return mouse_button[button % 3];
 }
 
 bool inp_update(f64 timestep) {

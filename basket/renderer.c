@@ -410,7 +410,7 @@ void ren_size(u16 *w, u16 *h) {
 
 void ren_mouse_position(i16 *x, i16 *y) {
     u16 _x, _y;
-    eng_mouse_position(&_x, &_y);
+    inp_mouse_position(&_x, &_y);
 
     u16 w, h;
     eng_window_size(&w, &h);

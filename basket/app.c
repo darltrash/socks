@@ -56,7 +56,7 @@ static int api_img_load() {
     u32 length;
     char *str = fs_read(luaL_checkstring(l, 1), &length);
 
-    if (str == NULL) 
+    if (str == NULL)
         return 0;
 
     Image img;
@@ -70,7 +70,7 @@ static int api_img_load() {
     lua_setfield(l, -2, "w");
     lua_pushinteger(l, img.h);
     lua_setfield(l, -2, "h");
-    
+
     return 1;
 }
 
@@ -79,9 +79,9 @@ static int api_fs_read() {
     u32 size;
     char *str = fs_read(luaL_checkstring(l, 1), &size);
 
-    if (str == NULL) 
+    if (str == NULL)
         lua_pushnil(l);
-        
+
     else
         lua_pushlstring(l, str, size);
 
@@ -92,11 +92,11 @@ static int api_fs_read() {
 
 static int api_videomode() {
     ren_videomode(
-        luaL_checknumber(l, 1), 
-        luaL_checknumber(l, 2), 
+        luaL_checknumber(l, 1),
+        luaL_checknumber(l, 2),
         lua_toboolean(l, 3)
     );
-    
+
     return 0;
 }
 
@@ -144,11 +144,11 @@ static int api_load_model() {
         lua_pushstring(l, model.extra);
         lua_setfield(l, -2, "extra");
     }
-    
+
     lua_newtable(l);
     for (u32 i = 0; i < model.submesh_amount; i++) {
         SubMesh *submesh = &model.submeshes[i];
-        
+
         lua_newtable(l);
         lua_pushinteger(l, submesh->range.offset);
         lua_rawseti(l, -2, 1);
@@ -228,7 +228,7 @@ static Color fetch_color(int a) {
 
                 lua_pop(l, 1);
             }
-            
+
         } else
             luaL_error(l, "tint value expected to be integer, nil or table of 4 integers");
 
@@ -316,7 +316,7 @@ static int fetch_call(RenderCall *call) {
         lua_getfield(l, -1, "data");
         call->mesh.data = (void*)lua_tostring(l, -1);
         lua_pop(l, 1);
-        
+
         lua_getfield(l, -1, "length");
         call->mesh.length = lua_tointeger(l, -1);
         lua_pop(l, 1);
@@ -335,7 +335,7 @@ static int api_render() {
     RenderCall call = { false, IDENTITY_MATRIX, COLOR_WHITE, {}, {0, 0, 0, 0}, NULL };
     if (fetch_call(&call))
         return 0;
-    
+
     ren_render(call);
 
     return 0;
@@ -347,7 +347,7 @@ static int api_draw() {
 
     if (fetch_call(&call))
         return 0;
-    
+
     ren_draw(call);
 
     return 0;
@@ -372,7 +372,7 @@ static int api_light() {
         light.color[i] = lua_tonumber(l, -1);
         lua_pop(l, 1);
     }
-    
+
     ren_light(light);
 
     return 0;
@@ -409,12 +409,12 @@ static int api_quad() {
     quad.position[0] = lua_tonumber(l, 2);
     quad.position[1] = lua_tonumber(l, 3);
     quad.color = fetch_color(4);
-    
+
     if (!lua_isnoneornil(l, 5))
-        quad.scale[0] = quad.scale[1] = lua_tonumber(l, 5); 
+        quad.scale[0] = quad.scale[1] = lua_tonumber(l, 5);
 
     if (!lua_isnoneornil(l, 6))
-        quad.scale[1] = lua_tonumber(l, 6); 
+        quad.scale[1] = lua_tonumber(l, 6);
 
 
     ren_quad(quad);
@@ -425,10 +425,10 @@ static int api_quad() {
 // ren.rect(x, y, w, h, color)
 static int api_rect() {
     ren_rect(
-        lua_tonumber(l, 1), 
-        lua_tonumber(l, 2), 
-        lua_tonumber(l, 3), 
-        lua_tonumber(l, 4), 
+        lua_tonumber(l, 1),
+        lua_tonumber(l, 2),
+        lua_tonumber(l, 3),
+        lua_tonumber(l, 4),
         fetch_color(5)
     );
 
@@ -452,7 +452,7 @@ static int api_input() {
     int e = luaL_checkoption(l, 1, NULL, options);
     int o = inp_button(e);
 
-    if (o) 
+    if (o)
         lua_pushinteger(l, o);
     else
         lua_pushnil(l);
@@ -473,7 +473,7 @@ static int api_log() {
 }
 
 static int api_mouse_down() {
-    bool down = eng_mouse_down(luaL_checkinteger(l, 1));
+    bool down = inp_mouse_down(luaL_checkinteger(l, 1));
     lua_pushboolean(l, down);
 
     return 1;
@@ -491,7 +491,7 @@ static int api_mouse_position() {
 
 static int api_raw_mouse_position() {
     u16 x, y;
-    eng_mouse_position(&x, &y);
+    inp_mouse_position(&x, &y);
 
     lua_pushinteger(l, x);
     lua_pushinteger(l, y);
@@ -531,7 +531,7 @@ static int api_sound_play() {
 
     if (!lua_isnoneornil(l, 2)) {
         luaL_checktype(l, 2, LUA_TTABLE);
-            
+
         static f32 v[3];
 
         //lua_getfield(l, 2, "paused");
@@ -571,7 +571,7 @@ static int api_sound_play() {
                 aud_set_position(src, v);
             }
         lua_pop(l, 1);
-        
+
         lua_getfield(l, 2, "velocity");
             if (!lua_isnil(l, -1)) {
                 for (size_t i = 0; i < 3; ++i) {
@@ -593,17 +593,17 @@ static int api_sound_play() {
 }
 
 static int api_sound_gain() {
-    aud_set_gain(luaL_checkinteger(l, 1), luaL_checknumber(l, 2));    
+    aud_set_gain(luaL_checkinteger(l, 1), luaL_checknumber(l, 2));
     return 1;
 }
 
 static int api_sound_pitch() {
-    aud_set_pitch(luaL_checkinteger(l, 1), luaL_checknumber(l, 2));    
+    aud_set_pitch(luaL_checkinteger(l, 1), luaL_checknumber(l, 2));
     return 1;
 }
 
 static int api_sound_area() {
-    aud_set_area(luaL_checkinteger(l, 1), luaL_checknumber(l, 2));    
+    aud_set_area(luaL_checkinteger(l, 1), luaL_checknumber(l, 2));
     return 1;
 }
 
@@ -641,7 +641,7 @@ static int api_store() {
 static int api_retrieve() {
     u32 size = 0;
     char *a = sav_retrieve(&size);
-    
+
     if (size == 0) {
         lua_pushboolean(l, false);
         return 1;
@@ -686,19 +686,13 @@ static const luaL_Reg registry[] = {
     { "size",               api_size               },
 
     { "load_sound",       api_load_sound       },
-    //{ "music_volume",     api_music_volume     },
-    //{ "music_loop",       api_music_loop       },
-    //{ "music_crossfade",  api_music_crossfade  },
-    //{ "music_stop",       api_music_stop       },
-    //{ "music_switch",     api_music_switch     },
-    //{ "music_play",       api_music_play       },
     { "sound_play",       api_sound_play       },
-    //{ "sound_volume",     api_sound_volume     },
-    //{ "sound_pan",        api_sound_pan        },
+    { "sound_gain",       api_sound_gain       },
+    { "sound_pitch",      api_sound_pitch      },
     //{ "sound_is_playing", api_sound_is_playing },
     { "listener",         api_listener         },
     { "orientation",      api_orientation      },
-    
+
     { "perlin", api_perlin },
 
     { "identity", api_identity },
@@ -780,7 +774,7 @@ static int close(int ret) {
 }
 
 // TODO: Consider embedding the actual Lua library within this specific file, and
-//       to fully isolate the engine 
+//       to fully isolate the engine
 
 Application app = {
     .init = init,
@@ -792,12 +786,12 @@ Application app = {
 static int require_fs_read() {
     const char* module = luaL_checkstring(l, 1);
     for (char* p = (char *)module; *p; p++)
-        if (*p == '.') 
+        if (*p == '.')
             *p = '/';
 
     char path[256];
     snprintf(path, sizeof(path), "%s.lua", module);
-    
+
     u32 length;
     const char* source = fs_read(path, &length);
 
@@ -835,7 +829,7 @@ int main(int argc, char *argv[]) {
     #endif
     lua_setfield(l, -2, "os");
 
-    
+
     lua_newtable(l);
     for (int i = 0; i < argc; i++) {
         lua_pushnumber(l, i);
