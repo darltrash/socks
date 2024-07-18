@@ -3,19 +3,21 @@ local vec3 = require "lib.vec3"
 local json = require "lib.json"
 
 local focused = false
-local target = {0, 0, 0}
+local target = { 0, 0, 0 }
 
 local world_mesh
 local lights
 
 eng.ambient(0x19023dff)
-eng.far(60, 0x0c031aff)
+eng.far(300, 0x0c031aff)
 eng.videomode(500, 400)
 
-local plane = eng.load_model("assets/mod_plane.exm")
+local plane = eng.load_model "assets/mod_plane.exm"
+
+local dome = eng.load_model "assets/mod_dome.exm"
 
 eng.set_room {
-    tick = function (self, timestep)
+    tick = function(self, timestep)
         if eng.focused ~= focused then
             focused = eng.focused
 
@@ -40,15 +42,15 @@ eng.set_room {
         if eng.input("up") then
             target[1] = target[1] - vel
         end
-    
+
         if eng.input("down") then
             target[1] = target[1] + vel
         end
-    
+
         if eng.input("left") then
             target[2] = target[2] - vel
         end
-    
+
         if eng.input("right") then
             target[2] = target[2] + vel
         end
@@ -62,18 +64,23 @@ eng.set_room {
         end
     end,
 
-    frame = function ()
+    frame = function()
         do
-            local eye = vec3.add (
+            local eye = vec3.add(
                 target,
 
-                vec3.mul_val (
-                    {1, 0, 0.5},
+                vec3.mul_val(
+                    { 1, 0, 0.5 },
                     5
                 )
             )
 
-            eng.camera(eye, target, {0, 0, 1})
+            eng.camera(eye, target, { 0, 0, 1 })
+
+            eng.render {
+                mesh = dome,
+                model = mat4.from_transform(vec3.mul(eye, { 1, 1, 0 }), 0, 300 - 10)
+            }
         end
 
         for _, light in ipairs(lights) do
@@ -82,7 +89,7 @@ eng.set_room {
 
         eng.render {
             mesh = plane,
-            texture = {16, 0, 32, 32},
+            texture = { 16, 0, 32, 32 },
             model = mat4.from_transform(target, 0, 2)
         }
 

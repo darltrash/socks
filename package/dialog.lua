@@ -1,18 +1,18 @@
 local characters = require "characters"
-local language   = require "language"
-local ui         = require "ui"
-local mat4       = require "lib.mat4"
-local fam        = require "lib.fam"
+local language = require "language"
+local ui = require "ui"
+local mat4 = require "lib.mat4"
+local fam = require "lib.fam"
 
-local dialog     = {}
+local dialog = {}
 
-dialog.text      = ""
+dialog.text = ""
 
-local w, h       = 450, 350
+local w, h = 450, 350
 
-local tick       = eng.load_sound("assets/snd_tick.ogg")
+local tick = eng.load_sound("assets/snd_tick.ogg")
 
-dialog.actor     = function(actor)
+dialog.actor = function(actor)
     local s = {}
     for str in actor:gmatch("([^:]+)") do
         table.insert(s, str)
@@ -38,10 +38,10 @@ dialog.actor     = function(actor)
         dialog.char_at_right = direction == "r"
     end
 
-    dialog.character_switch = 1
+    dialog.switch_up = 1
 end
 
-dialog.say       = function(text)
+dialog.say = function(text)
     dialog.text = ""
     dialog.syllables = language.syllabify("* " .. text)
     dialog.scissor = 1
@@ -52,7 +52,7 @@ dialog.say       = function(text)
     until not dialog.busy
 end
 
-dialog.follow    = function(text)
+dialog.follow = function(text)
     for _, v in ipairs(language.syllabify("\n* " .. text)) do
         table.insert(dialog.syllables, v)
     end
@@ -63,7 +63,14 @@ dialog.follow    = function(text)
     until not dialog.busy
 end
 
-dialog.tick      = function()
+dialog.wait = function(time)
+    local final = eng.time + time
+    repeat
+        coroutine.yield()
+    until eng.time >= final
+end
+
+dialog.tick = function()
     if dialog.busy then
         dialog.scissor = math.min(#dialog.syllables, dialog.scissor + 0.2)
 
@@ -97,29 +104,40 @@ dialog.tick      = function()
     end
 end
 
-dialog.frame     = function(delta)
+dialog.frame = function(delta)
     local m = 10
     local mx = 70
     local hh = 80
     local rw = w - (m * 2) - (mx) - (w / 6)
 
-    ui.rounded_rect((-w / 2) + m + mx, (h / 2) - (hh + m), rw, hh, 0xd4befaFF)
-    ui.print(dialog.text, (-w / 2) + (m * 2) + mx + 66, (h / 2) - hh, 0x330033FF, rw - 80)
+    local t = dialog.busy and 0 or 1
+    dialog.switch_up = fam.lerp(dialog.switch_up or 1, t, delta * 20)
+    local e = fam.inv_square(dialog.switch_up) * 32
+
+    local r = fam.to_u8((1 - dialog.switch_up) * 1.1)
+
+    local c1 = { 0xd4, 0xbe, 0xfa, r }
+    ui.rounded_rect((-w / 2) + m + mx, (h / 2) - (hh + m) + e, rw, hh, c1)
+
+    local c2 = { 0x33, 0x00, 0x33, r }
+    ui.print(dialog.text, (-w / 2) + (m * 2) + mx + 66, (h / 2) - hh + e, c2, rw - 80)
 
     local y = (h / 2) - (160)
 
     --eng.rect((-w/2)+(m*2)+mx+66, (h/2)-hh-(m/2), rw-80, hh-(m), 0xFF00FFFF
-    dialog.character_switch = fam.lerp(dialog.character_switch, 0, delta * 30)
 
     if dialog.character then
+        local avatar = dialog.character.avatar
+
         eng.draw {
-            mesh = dialog.character.avatar,
-            range = dialog.character.avatar.submeshes[dialog.submesh],
+            mesh = avatar,
+            range = avatar.submeshes[dialog.submesh],
             model = mat4.from_transform(
-                { (-w / 2) + m, y - m + 4 + ((dialog.character_switch ^ 2) * 16), -0.1 },
+                { (-w / 2) + m, y - m + 4 + (e * 2), -0.1 },
                 { 0, 0, math.sin(eng.timer) * 0.01 },
                 { 160, 160, 1 }
             ),
+            tint = { 255, 255, 255, ((r / 255) ^ 2) * 255 },
             texture = { 0, 0, 1, 1 }
         }
     end

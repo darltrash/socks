@@ -1,5 +1,5 @@
 local vec3 = require "lib.vec3"
-local fam  = require "lib.fam"
+local fam = require "lib.fam"
 local assets = require "assets"
 
 local player = require "player"
@@ -7,28 +7,28 @@ local player = require "player"
 local init = {
     player = player.init,
 
-    capeman = function (ent, world)
+    capeman = function(ent, world)
         ent.texture = { 80, 32, 32, 32 }
         ent.floats = true
     end,
 
-    explosion = function (ent, world)
+    explosion = function(ent, world)
         local intensity = ent.intensity or 5
 
-        for x=1, intensity * 5 do
+        for x = 1, intensity * 5 do
             table.insert(world.particles, {
                 position = ent.position,
-                velocity = vec3.mul_val(vec3.random(3), math.random(10, intensity*14)/10),
+                velocity = vec3.mul_val(vec3.random(3), math.random(10, intensity * 14) / 10),
                 life = 2,
-                scale = math.random(1, intensity)/32,
+                scale = math.random(1, intensity) / 32,
                 decay_rate = 1
             })
         end
-        
+
         ent.boom_counter = ent.boom_counter or 3
     end,
 
-    door = function (ent, world)
+    door = function(ent, world)
         local t = world.teleporters[ent.tokens[2]]
         if t then
             t.link = ent
@@ -44,7 +44,7 @@ local init = {
         ent.mesh = ent.lock and assets.lock or nil
     end,
 
-    jumpybumpy = function (ent)
+    jumpybumpy = function(ent)
         ent.floats = true
         ent.no_shadow = true
         ent.mesh = assets.fan
@@ -52,7 +52,7 @@ local init = {
         ent.particle_timer = 0
     end,
 
-    switch = function (ent, world)
+    switch = function(ent, world)
         ent.floats = true
         ent.no_shadow = true
         ent.switch = ent.tokens[2]
@@ -65,25 +65,25 @@ local init = {
         }
     end,
 
-    key = function (ent, world)
+    key = function(ent, world)
         ent.floats = true
         ent.texture = { 80, 64, 16, 16 }
         ent.position[3] = ent.position[3] + 1
         ent.particle_timer = 0
     end,
 
-    follower = function (ent, world)
+    follower = function(ent, world)
         ent.particle_timer = 0
         ent.floats = true
-        ent.tint = {255, 255, 255, 255}
+        ent.tint = { 255, 255, 255, 255 }
     end
 }
 
 local tick = {
     player = player.tick,
 
-    capeman = function (ent, world)
-        ent.texture[1] = 80 + (math.floor(eng.timer*2) % 2) * 32
+    capeman = function(ent, world)
+        ent.texture[1] = 80 + (math.floor(eng.timer * 2) % 2) * 32
 
         if world.kill_em_guys then
             ent.delete = true
@@ -108,8 +108,8 @@ local tick = {
         end
     end,
 
-    explosion = function (ent, world)
-        ent.boom_counter = ent.boom_counter - (1/30)
+    explosion = function(ent, world)
+        ent.boom_counter = ent.boom_counter - (1 / 30)
 
         if ent.boom_counter <= 0 then
             ent.delete = true
@@ -119,7 +119,7 @@ local tick = {
         end
     end,
 
-    door = function (ent, world)
+    door = function(ent, world)
         local p = world.entities.map.player
 
         if p and ent.interacting then
@@ -142,19 +142,18 @@ local tick = {
 
             world.transition.ease = "in"
             p.state = "walk_in"
-            
-            world.transition.callback = function ()
-                world.camera.instant = true
-                p.position = vec3.add(ent.link.position, {0.3, 0, 0.3})
+
+            world.transition.callback = function()
+                --world.camera.instant = true
+                p.position = vec3.add(ent.link.position, { 0.3, 0, 0.3 })
                 p.ghost_mode = true
                 p.state = "on_air"
                 player.set_checkpoint(p.position)
-
             end
         end
     end,
 
-    jumpybumpy = function (ent, world)
+    jumpybumpy = function(ent, world)
         local speed_up = true
 
         local l = ent.tokens[2]
@@ -162,21 +161,21 @@ local tick = {
             speed_up = world.switches[l]
         end
 
-        ent.speed = fam.lerp(ent.speed, speed_up and 1 or 0, 1/2)
+        ent.speed = fam.lerp(ent.speed, speed_up and 1 or 0, 1 / 2)
 
         ent.rotation[3] = eng.timer * ent.speed * 4
 
         local p = world.entities.map.player
         local render = true
         if p then
-            local inside_cylinder = 
+            local inside_cylinder =
                 (vec3.distance(p.position, ent.position, 2) <= ent.area)
-                and (math.abs(p.position[3]-ent.position[3]) <= 4)
+                and (math.abs(p.position[3] - ent.position[3]) <= 4)
 
             render = vec3.distance(p.position, ent.position) < 15
 
             if inside_cylinder then
-                p.velocity = vec3.add(p.velocity, {0, 0, ent.speed * 0.12})
+                p.velocity = vec3.add(p.velocity, { 0, 0, ent.speed * 0.12 })
             end
         end
 
@@ -185,12 +184,12 @@ local tick = {
             local n = vec3.random(3)
             n[3] = 0
             local t = vec3.add(ent.position, n)
-    
+
             table.insert(world.particles, {
                 position = t,
-                velocity = {0, 0, 4},
+                velocity = { 0, 0, 4 },
                 life = ent.speed,
-                scale = 2/16,
+                scale = 2 / 16,
                 decay_rate = 0.2
             })
 
@@ -198,7 +197,7 @@ local tick = {
         end
     end,
 
-    switch = function (ent, world)
+    switch = function(ent, world)
         if ent.interacting then
             eng.sound_play(assets.switch_click)
             world.switches[ent.switch] = not world.switches[ent.switch]
@@ -208,12 +207,12 @@ local tick = {
         ent.ghost_mode = true
     end,
 
-    key = function (ent, world)
+    key = function(ent, world)
         local render = true
 
-        if world.camera.lerped then
-            render = vec3.distance(world.camera.lerped, ent.position) < 15
-        end
+        --if world.camera.lerped then
+        --    render = vec3.distance(world.camera.lerped, ent.position) < 15
+        --end
 
         local p = world.entities.map.player
         if p and vec3.distance(p.position, ent.position) < 3 then
@@ -232,12 +231,12 @@ local tick = {
         if ent.particle_timer > 3 and render then
             local n = vec3.random(3)
             local t = vec3.add(ent.position, n)
-    
+
             table.insert(world.particles, {
                 position = t,
-                velocity = {0, 0, 0.1},
+                velocity = { 0, 0, 0.1 },
                 life = 1,
-                scale = 2/16,
+                scale = 2 / 16,
                 decay_rate = 0.2,
                 light = math.random(1, 3) == 3
                     and { 0.3, 0.05, 0.1 }
@@ -248,10 +247,10 @@ local tick = {
             ent.particle_timer = 0
         end
 
-        ent.velocity[3] = math.sin(eng.timer*4) * 0.1
+        ent.velocity[3] = math.sin(eng.timer * 4) * 0.1
     end,
 
-    follower = function (ent, world)
+    follower = function(ent, world)
         local p = world.entities.map.player
 
         if ent.disable then
@@ -261,15 +260,15 @@ local tick = {
             end
             return
         end
-        
-        ent.alpha = fam.lerp(ent.alpha or 0, p and 1 or 0, 1/3)
+
+        ent.alpha = fam.lerp(ent.alpha or 0, p and 1 or 0, 1 / 3)
         ent.tint[4] = fam.to_u8(ent.alpha)
 
         if p then
             ent.flip_x = p.flip_x or 0
-            local t = vec3.add(p.position, {1/16, p.flip_x or 0, 0})
+            local t = vec3.add(p.position, { 1 / 16, p.flip_x or 0, 0 })
             ent.velocity = vec3.mul_val(vec3.sub(t, ent.position), 0.3)
-        
+
             if player.holding ~= ent then
                 ent.disable = true
             end
@@ -285,12 +284,12 @@ local tick = {
         if ent.particle_timer > 3 and render then
             local n = vec3.random(3)
             local t = vec3.add(ent.position, n)
-    
+
             table.insert(world.particles, {
                 position = t,
-                velocity = {0, 0, 0.1},
+                velocity = { 0, 0, 0.1 },
                 life = 1,
-                scale = 2/16,
+                scale = 2 / 16,
                 decay_rate = 0.2,
                 light = math.random(1, 3) == 3
                     and { 0.3, 0.05, 0.1 }

@@ -1,41 +1,39 @@
-local mat4      = require "lib.mat4"
-local vec3      = require "lib.vec3"
-local bump      = require "lib.bump"
-local json      = require "lib.json"
-local fam       = require "lib.fam"
-local bvh       = require "bvh"
-local dialog    = require "dialog"
+local mat4 = require "lib.mat4"
+local vec3 = require "lib.vec3"
+local bump = require "lib.bump"
+local json = require "lib.json"
+local fam = require "lib.fam"
+local bvh = require "bvh"
+local dialog = require "dialog"
 
-local blam      = require "lib.blam"
+local blam = require "lib.blam"
 
-local ui        = require "ui"
-local assets    = require "assets"
-local entities  = require "entities"
+local ui = require "ui"
+local assets = require "assets"
+local entities = require "entities"
 local materials = require "material"
 
-local ball      = {
+local dome = eng.load_model "assets/mod_dome.exm"
+
+local camera = require "camera"
+
+local ball = {
     position = { 0, 0, 0 },
     velocity = { 0, 0, 0 }
 }
 
-local w, h      = 450, 350
+local w, h = 450, 350
 
-local state     = {
+local state = {
     init = function(self, world)
+        self.far = 150
+
         eng.ambient(0x19023dff)
-        eng.far(80, 0x0c031aff)
+        eng.far(self.far, 0x0c031aff)
         eng.videomode(w, h)
         --eng.dithering(false)
 
         self.colliders = bump.newWorld()
-
-        self.camera = {
-            distance = 4,
-            target = { 0, 0, 1 },
-            instant = false,
-
-            -- lerped = {0, 0, 0}
-        }
 
         self.entities = {
             map = {},
@@ -55,8 +53,6 @@ local state     = {
         self.easter_time = 5
         self.easter_bunny = ""
         self.easter_eggs = {}
-
-        self.script = coroutine.create(require("scripts.pandatest"))
 
         world = world or "assets/lvl_hometown.exm"
 
@@ -162,13 +158,13 @@ local state     = {
             a(ent, self)
         end
 
-        ent.position  = ent.position or { 0, 0, 0 }
-        ent.velocity  = ent.velocity or { 0, 0, 0 }
-        ent.scale     = ent.scale or { 1, 1, 1 }
-        ent.rotation  = ent.rotation or { 0, 0, 0 }
+        ent.position = ent.position or { 0, 0, 0 }
+        ent.velocity = ent.velocity or { 0, 0, 0 }
+        ent.scale = ent.scale or { 1, 1, 1 }
+        ent.rotation = ent.rotation or { 0, 0, 0 }
 
         ent._position = vec3.copy(ent.position)
-        ent._scale    = vec3.copy(ent.scale)
+        ent._scale = vec3.copy(ent.scale)
         ent._rotation = vec3.copy(ent.rotation)
 
         table.insert(self.entities.buffer, ent)
@@ -183,7 +179,19 @@ local state     = {
         return ent
     end,
 
+    routine = function(self, func)
+        if self.script then
+            coroutine.close(self.script)
+        end
+
+        self.script = coroutine.create(func)
+    end,
+
     tick = function(self, timestep)
+        if eng.text() == "e" then
+            self:routine(require("scripts.pandatest"))
+        end
+
         do
             local t = eng.text()
             if #t > 0 then
@@ -265,7 +273,7 @@ local state     = {
             end
 
             ent._position = vec3.copy(ent.position)
-            ent._scale    = vec3.copy(ent.scale)
+            ent._scale = vec3.copy(ent.scale)
             ent._rotation = ent.rotation
 
             -- Handle some animations
@@ -365,10 +373,16 @@ local state     = {
         self.kill_em_guys = false
 
         if self.script then
-            local ok, err = coroutine.resume(self.script)
+            if coroutine.status(self.script) == "dead" then
+                self.script = nil
+                print("SCRIPT FINISHED :)")
+                return
+            end
+
+            local ok, err = coroutine.resume(self.script, self)
             if not ok then
                 self.script = nil
-                print("SCRIPT FINISHED: " .. err)
+                print("SCRIPT ERROR: " .. err)
             end
         end
     end,
@@ -393,10 +407,6 @@ local state     = {
                 fam.angle_lerp(ent._rotation[3], ent.rotation[3], alpha),
             }
 
-            if ent.camera_focus then
-                cam.target = vec3.add(p, { 0, 0, ent.texture[4] / 26 })
-            end
-
             ent.texture_swap = fam.lerp(ent.texture_swap or 1, 1, delta * 6)
 
             local real_scale = s
@@ -412,8 +422,13 @@ local state     = {
                 )
             end
 
+            local model = mat4.from_transform(p, r, real_scale)
+
+            -- assume mat4.look_at(eye, towards, up) exists
+
+
             eng.render {
-                model = mat4.from_transform(p, r, real_scale),
+                model = model,
                 mesh = ent.mesh or assets.plane,
                 tint = ent.tint,
                 texture = ent.texture
@@ -537,29 +552,15 @@ local state     = {
 
         eng.log("particles: " .. #self.particles)
 
-        do
-            local eye = vec3.add(
-                cam.target,
-
-                vec3.mul_val(
-                    { 1, 0, 0.5 },
-                    cam.distance
-                )
-            )
-
-            local t = cam.instant and 1 or (delta * 16)
-            cam.lerped = vec3.lerp(cam.lerped or eye, eye, delta * 16)
-
-            cam.instant = false
-
-            eng.camera(cam.lerped, cam.target, { 0, 0, 1 })
-
-            eng.listener(cam.target)
-        end
-
+        camera.frame(delta)
 
         eng.render {
             mesh = self.world_mesh
+        }
+
+        eng.render {
+            mesh = dome,
+            model = mat4.from_transform(vec3.mul(camera.current.eye, { 1, 1, 0 }), 0, self.far - 10)
         }
 
         if self.interactable then

@@ -29,7 +29,7 @@ local on_error = function(err)
             local w = ui.text_size(str)
 
             eng.rect(-138, -49, w + 16, 16, 0xFF0353FF)
-            ui.print(str .. "\n\n" .. err .. "\n" .. trace .. "\n", -131, -44)
+            ui.print(str .. "\n\n" .. err .. "\n" .. trace .. "\n", -131, -44, 0xFFFFFFFF)
         end
     }
 
