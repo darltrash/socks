@@ -216,11 +216,12 @@ eng.window_size = function() end
 eng.size = function() end
 
 ---@param name string
+---@param spatialize boolean?
 ---@return integer
 ---@see eng.sound_play
 ---@nodiscard
 -- Loads a sound (only static for now...)
-eng.load_sound = function(name) end
+eng.load_sound = function(name, spatialize) end
 
 ---@param source integer
 ---@param settings AudioSettings?
@@ -238,6 +239,15 @@ eng.sound_gain = function(sound, gain) end
 ---@param pitch number
 -- Sets a sound's pitch
 eng.sound_pitch = function(sound, pitch) end
+
+---@param sound integer
+---@return
+---| 'initial'
+---| 'stopped'
+---| 'playing'
+---| 'paused'
+-- Checks the state of the sound
+eng.sound_state = function(sound) end
 
 ---@param position table
 -- Sets the listener's position

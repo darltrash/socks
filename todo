@@ -1,9 +1,6 @@
-- Figure out a way to do gradient backgrounds
 - Fix blam.lua
-- Figure out a way to script out each entity
 - Model more of the city Model
 - Figure out if you can fix Z fight without breaking GLES2 compat
-- Finish Cami Flowers' theme song, probably take some inspiration from other music?
 - Call dad for today
 - Finish math API
 - Investigate if whether to port collision and bvh math to C

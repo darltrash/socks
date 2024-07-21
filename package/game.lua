@@ -26,12 +26,17 @@ local w, h = 450, 350
 
 local state = {
     init = function(self, world)
-        self.far = 150
-
         eng.ambient(0x19023dff)
-        eng.far(self.far, 0x0c031aff)
         eng.videomode(w, h)
+
+        if world == "keep" then
+            return
+        end
+
         --eng.dithering(false)
+
+        self.far = 150
+        eng.far(self.far, 0x0c031aff)
 
         self.colliders = bump.newWorld()
 
@@ -54,6 +59,8 @@ local state = {
         self.easter_bunny = ""
         self.easter_eggs = {}
 
+        self.instructions = {}
+
         world = world or "assets/lvl_hometown.exm"
 
         self.world_mesh = assert(
@@ -67,10 +74,10 @@ local state = {
         local triangles = {}
 
         for i = 1, #self.world_mesh.data, 24 do
-            local p1x, p1y, p1z = string.unpack(vertex_format, self.world_mesh.data, i + 00)
-            table.insert(triangles, math.floor(p1x * 32) / 32)
-            table.insert(triangles, math.floor(p1y * 32) / 32)
-            table.insert(triangles, math.floor(p1z * 32) / 32)
+            local p1x, p1y, p1z = string.unpack(vertex_format, self.world_mesh.data, i)
+            table.insert(triangles, p1x)
+            table.insert(triangles, p1y)
+            table.insert(triangles, p1z)
         end
 
         self.triangles = bvh.new(triangles)
@@ -140,10 +147,28 @@ local state = {
         end
 
         for _, light in ipairs(data.lights) do
-            table.insert(self.lights, {
-                position = light.position,
+            local entity = {}
+
+            entity.id = light.name:gsub("(%.%d+)$", "")
+            entity.tokens = {}
+            for word in string.gmatch(entity.id, '([^/]+)') do
+                table.insert(entity.tokens, word)
+            end
+            entity.position = light.position
+            entity.type = entity.tokens[1] or entity.id
+
+            entity.floats = true
+
+            for word in string.gmatch(entity.id, '([^/]+)') do
+                table.insert(entity.tokens, word)
+            end
+
+            entity.light = {
+                offset = { 0, 0, 0 },
                 color = vec3.mul_val(light.color, light.power * math.exp(-4.2))
-            })
+            }
+
+            self:add_entity(entity)
         end
     end,
 
@@ -188,9 +213,10 @@ local state = {
     end,
 
     tick = function(self, timestep)
-        if eng.text() == "e" then
-            self:routine(require("scripts.pandatest"))
-        end
+        --if eng.text() == "e" then
+        --    print("e")
+        --    self:routine(require("scripts.pandatest"))
+        --end
 
         do
             local t = eng.text()
@@ -322,27 +348,28 @@ local state = {
                 end
             end
 
-            --            local coll = ent.sphere_collider
-            --            if coll then
-            --                local p = vec3.add(ent.position, coll.offset)
-            --                local _, velocity, planes = blam.response_update(p, ent.velocity, coll.size, query_bvh)
-            --
-            --                ent.on_floor = false
-            --
-            --                for _, plane in ipairs(planes) do
-            --                    if vec3.dot(plane.normal, {0, 0, 1}) > 0.9 then
-            --                        ent.on_floor = true
-            --                        break
-            --                    end
-            --                end
-            --
-            --                ent.velocity = velocity
-            --            end
+            local coll = ent.sphere_collider
+            if false and coll then
+                local p = vec3.add(ent.position, coll.offset)
+                local _, velocity, planes = blam.response_update(p, ent.velocity, coll.size, query_bvh, 1)
+
+                ent.on_floor = false
+
+                for _, plane in ipairs(planes) do
+                    if vec3.dot(plane.normal, { 0, 0, 1 }) > 0.8 then
+                        ent.on_floor = true
+
+                        break
+                    end
+                end
+
+                ent.velocity = velocity
+            end
 
             ent.position = vec3.add(ent.position, ent.velocity)
 
             ent.interacting = false
-            if p and ent.interactable and not self.transition.ease then
+            if p and ent.interactable and not (self.transition.ease or self.script) then
                 local player_on_area = vec3.distance(p.position, ent.position) < (ent.area or 2)
 
                 if player_on_area then
@@ -350,7 +377,6 @@ local state = {
                     ent.interacting = eng.input("menu") == 1
                 end
             end
-
 
             -- performs a swap remove if an entity has the .delete property
             if ent.delete then
@@ -372,17 +398,90 @@ local state = {
 
         self.kill_em_guys = false
 
-        if self.script then
-            if coroutine.status(self.script) == "dead" then
-                self.script = nil
-                print("SCRIPT FINISHED :)")
-                return
+        if not self.transition.ease then
+            if self.script then
+                local scripting = {
+                    entities = self.entities,
+
+                    say = dialog.say,
+                    ask = dialog.ask,
+                    actor = dialog.actor,
+                    follow = dialog.follow,
+
+                    focus = camera.focus,
+                    look_at = camera.look_at,
+                    force_focus = camera.force_focus,
+
+                    sfx = function(music, dont_wait)
+                        local inst = {
+                            type = "sfx",
+                            src = music
+                        }
+
+                        table.insert(self.instructions, inst)
+
+                        if not dont_wait then
+                            repeat coroutine.yield() until inst.done
+                        end
+
+                        return inst
+                    end,
+
+                    wait = function(seconds)
+                        local target = eng.timer + seconds
+                        while eng.timer < target do
+                            coroutine.yield()
+                        end
+                    end,
+
+                    image = function(what)
+                        local inst = {
+                            type = "image",
+                            src = what
+                        }
+
+                        table.insert(self.instructions, inst)
+
+                        repeat coroutine.yield() until inst.done
+                    end
+                }
+
+                if coroutine.status(self.script) == "dead" then
+                    self.script = nil
+                    print("SCRIPT FINISHED :)")
+                    return
+                end
+
+                local ok, err = coroutine.resume(self.script, scripting)
+                if not ok then
+                    self.script = nil
+                    print("SCRIPT ERROR: " .. err)
+                end
             end
 
-            local ok, err = coroutine.resume(self.script, self)
-            if not ok then
-                self.script = nil
-                print("SCRIPT ERROR: " .. err)
+            for i, inst in ipairs(self.instructions) do
+                if inst.type == "image" then
+                    inst.done = true
+                    self.transition.ease = "in"
+                    self.transition.a = 0
+                    self.transition.callback = function()
+                        local screen = require "screen"
+                        eng.set_room(screen, inst.src, function()
+                            eng.set_room(self, "keep")
+                        end)
+                    end
+                    table.remove(self.instructions, i)
+                elseif inst.type == "sfx" then
+                    if not inst.real_source then
+                        inst.real_source = eng.load_sound(inst.src)
+                        inst.audio = eng.sound_play(inst.real_source)
+                    end
+
+                    if eng.sound_state(inst.audio) ~= "playing" then
+                        inst.done = true
+                        table.remove(self.instructions, i)
+                    end
+                end
             end
         end
     end,
@@ -390,13 +489,14 @@ local state = {
     frame = function(self, alpha, delta)
         local cam = self.camera
 
-        for _, light in ipairs(self.lights) do
-            eng.light(light.position, light.color)
-        end
-
         for _, ent in ipairs(self.entities) do
-            local visible = (ent.texture or ent.mesh) and not ent.invisible
+            if ent.invisible then return end
 
+            if ent.light and not ent.light.off then
+                eng.light(ent.position, ent.light.color)
+            end
+
+            local visible = (ent.texture or ent.mesh)
             if not visible then goto continue end
 
             local p = vec3.lerp(ent._position, ent.position, alpha)
@@ -505,7 +605,7 @@ local state = {
             --                eng.render {
             --                    mesh = assets.sphere,
             --                    model = mat4.from_transform(t, {0, 0, 0}, ent.sphere_collider.size),
-            --                    texture = { 0, 0, 1, 1 },
+            --                    texture = { 0, o0, 1, 1 },
             --                    tint = { 255, 255, 255, 255 / 6 }
             --                }
             --            end
@@ -631,9 +731,8 @@ local state = {
 
         dialog.frame(delta)
 
-
         --eng.rect((-w/2)+m, y-m+4, 160, 160, 0xFF000066)
-    end
+    end,
 }
 
-eng.set_room(state)
+return state

@@ -44,26 +44,41 @@ int aud_load_ogg(Sound *sound, const u8 *mem, u32 len, bool spatialize) {
     int samples = stb_vorbis_decode_memory(mem, len, &channels, &sample_rate, &decoded_data);
 
     if (spatialize) {
-        // downmix! 
-        // TODO: PORT THIS TO MORE CHANNELS
-        if (channels == 2) {
-            int o = 0;
+        // Downmix to mono
+        int o = 0;
+        for (int i = 0; i < samples; i += channels)
+            decoded_data[o++] = (decoded_data[i] + decoded_data[i + 1]) / (float)channels;
 
-            for (int i = 0; i < samples; i += 2) 
-                decoded_data[o++] = (decoded_data[i] + decoded_data[i + 1]) / 2;
+        samples = samples / (float)channels;
+        channels = 1;
+    } else {
+        if (channels == 1) {
+            // Upmix mono to stereo
+            short *stereo_data = (short *)malloc(samples * 2 * sizeof(short));
+            if (stereo_data == NULL) {
+                // Handle allocation failure
+                free(decoded_data);
+                return -1;
+            }
 
-            samples = samples / 2;
-            channels = 1;
+            for (int i = 0; i < samples; ++i) {
+                stereo_data[i * 2] = decoded_data[i];     // Left channel
+                stereo_data[i * 2 + 1] = decoded_data[i]; // Right channel
+            }
+
+            free(decoded_data); // Free original mono data
+            decoded_data = stereo_data;
+            channels = 2;
         }
     }
 
     alGenBuffers(1, sound);
 
     alBufferData(
-        *sound, (channels == 1) ? AL_FORMAT_MONO16 : AL_FORMAT_STEREO16, 
+        *sound, (channels == 1) ? AL_FORMAT_MONO16 : AL_FORMAT_STEREO16,
         decoded_data, samples * channels * sizeof(short), sample_rate
     );
-    
+
     free(decoded_data);
 
     return 0;
@@ -114,11 +129,11 @@ void aud_listener(f32 position[3]) {
 }
 
 void aud_orientation(f32 towards[3], f32 up[3]) {
-    f32 orientation[6] = { 
-        towards[0], towards[1], towards[2], 
-        up[0], up[1], up[2] 
+    f32 orientation[6] = {
+        towards[0], towards[1], towards[2],
+        up[0], up[1], up[2]
     };
-    
+
     alListenerfv(AL_ORIENTATION, orientation);
 }
 
@@ -128,6 +143,20 @@ void aud_listener_gain(f32 volume) {
 
 void aud_global_pause(bool pause) {
     alListeneri(AL_PAUSED, pause);
+}
+
+int aud_state(Source audio) {
+    int state;
+    alGetSourcei(audio, AL_SOURCE_STATE, &state);
+
+    switch (state) {
+        case AL_INITIAL: return AUD_STATE_INITIAL;
+        case AL_STOPPED: return AUD_STATE_STOPPED;
+        case AL_PLAYING: return AUD_STATE_PLAYING;
+        case AL_PAUSED:  return AUD_STATE_PAUSED;
+    }
+
+    return 0;
 }
 
 int aud_byebye() {

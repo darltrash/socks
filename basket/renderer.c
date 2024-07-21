@@ -56,7 +56,7 @@ static int snapping = 0;
 static bool dithering = true;
 static bool compat_mode = true;
 static bool was_debug = false;
-static bool resize; 
+static bool resize;
 
 static tfx_vertex_format vertex_format;
 static f32 view_matrix[16] = IDENTITY_MATRIX;
@@ -74,11 +74,11 @@ static MeshSlice quad = {
 SDL_Window *window;
 
 static void tfx_debug_thingy(const char *str, tfx_severity severity) {
-    if (!eng_is_debug()) 
+    if (!eng_is_debug())
         return;
 
     printf("tfx ");
-    
+
     switch (severity) {
         case TFX_SEVERITY_INFO: {
             printf("info: ");
@@ -134,7 +134,7 @@ u8 ren_tex_load_custom(Image img) {
     for (int i = 0; i < TEXTURE_AMOUNT; i++) {
         if (!textures[i].gl_count) {
             textures[i] = tfx_texture_new(
-                img.w, img.h, 1, img.pixels, 
+                img.w, img.h, 1, img.pixels,
                 TFX_FORMAT_RGBA8, TFX_TEXTURE_FILTER_POINT
             );
             return i+1;
@@ -172,14 +172,14 @@ static tfx_program shader(const char *data, const char *attribs[]) {
     u32 final_length = strlen(data) + strlen(library_glsl) + 32;
     char *final_source = malloc(final_length);
 
-    if (compat_mode) 
+    if (compat_mode)
         snprintf(final_source, final_length, "#define COMPAT_MODE 1\n%s\n%s\n", library_glsl, data);
     else
         snprintf(final_source, final_length, "%s\n%s\n", library_glsl, data);
 
     tfx_program program = tfx_program_new (
-        final_source, 
-        final_source, 
+        final_source,
+        final_source,
         attribs, -1
     );
 
@@ -249,7 +249,7 @@ int ren_init(SDL_Window *_window) {
     texture_none = tfx_texture_new(1, 1, 1, &transparent, TFX_FORMAT_RGBA8, 0);
 
     ren_tex_bind(0, 0);
-    
+
     const char *attribs[] = {
         "vx_position",
         "vx_uv",
@@ -324,8 +324,8 @@ RenderCall *ren_draw(RenderCall call) {
 
 void ren_quad(Quad q) {
     const f32 tmp0[16] = QUICK_SCALE_MATRIX(
-        q.texture.w * q.scale[0], 
-        q.texture.h * q.scale[1], 
+        q.texture.w * q.scale[0],
+        q.texture.h * q.scale[1],
         1.0
     );
 
@@ -336,7 +336,11 @@ void ren_quad(Quad q) {
         .texture = q.texture,
         .mesh = quad,
     };
-    mat4_mul(call.model, tmp0, tmp1);
+
+    f32 final[16];
+    mat4_mul(final, tmp0, tmp1);
+
+    memcpy(call.model, final, sizeof(f32)*16);
 
     ren_draw(call);
 }
@@ -356,7 +360,7 @@ void ren_rect(i32 x, i32 y, u32 w, u32 h, Color color) {
 }
 
 void ren_log(const char *str, ...) {
-    if (!eng_is_debug()) 
+    if (!eng_is_debug())
         return;
 
     static char buffer[256];
@@ -428,16 +432,16 @@ void ren_mouse_position(i16 *x, i16 *y) {
 static int compare_triangles_2D(const void *a, const void *b) {
     const Triangle t_a = *(const Triangle *)a;
     const Triangle t_b = *(const Triangle *)b;
-    
+
     f32 avg_z_a = (
-            t_a.a.position[2] + 
-            t_a.b.position[2] + 
+            t_a.a.position[2] +
+            t_a.b.position[2] +
             t_a.c.position[2]
         ) / 3.0f;
 
     f32 avg_z_b = (
-            t_b.a.position[2] + 
-            t_b.b.position[2] + 
+            t_b.a.position[2] +
+            t_b.b.position[2] +
             t_b.c.position[2]
         ) / 3.0f;
 
@@ -476,7 +480,7 @@ int ren_frame() {
 
         if (eng_is_debug())
             flags = 0
-                | TFX_RESET_DEBUG_OVERLAY 
+                | TFX_RESET_DEBUG_OVERLAY
                 | TFX_RESET_DEBUG_OVERLAY_STATS
                 | TFX_RESET_REPORT_GPU_TIMINGS;
 
@@ -486,7 +490,7 @@ int ren_frame() {
 
         resolution[0] = target_w;
         resolution[1] = target_h;
-        
+
         if (enable_fill) {
             resolution[0] = (f32)(width )/scale;
             resolution[1] = (f32)(height)/scale;
@@ -496,8 +500,8 @@ int ren_frame() {
             tfx_canvas_free(&canvas);
 
         canvas = tfx_canvas_new(
-            resolution[0], resolution[1], 
-            TFX_FORMAT_RGBA8_D24, 
+            resolution[0], resolution[1],
+            TFX_FORMAT_RGBA8_D24,
             TFX_TEXTURE_FILTER_POINT
         );
 
@@ -605,7 +609,7 @@ int ren_frame() {
 
         if (!call.range.length)
             call.range = (Range) {
-                .offset = 0, 
+                .offset = 0,
                 .length = call.mesh.length/3
             };
 
@@ -660,7 +664,7 @@ int ren_frame() {
     tfx_set_texture(&image_uniform, &texture_main, 0);
     tfx_set_texture(&lumos_uniform, &texture_lumos, 1);
     tfx_submit(view, program, false);
-    
+
 
     // RENDER QUADS
     const u8 ui = 3;
@@ -682,7 +686,7 @@ int ren_frame() {
 
         if (!call.range.length)
             call.range = (Range) {
-                .offset = 0, 
+                .offset = 0,
                 .length = call.mesh.length/3
             };
 

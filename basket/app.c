@@ -519,6 +519,24 @@ static int api_size() {
     return 2;
 }
 
+static int api_sound_state() {
+    Sound snd = luaL_checkinteger(l, 1);
+    int state = aud_state(snd);
+
+    switch (state) {
+        case AUD_STATE_INITIAL: lua_pushstring(l, "initial"); break;
+        case AUD_STATE_STOPPED: lua_pushstring(l, "stopped"); break;
+        case AUD_STATE_PLAYING: lua_pushstring(l, "playing"); break;
+        case AUD_STATE_PAUSED:  lua_pushstring(l, "paused");  break;
+        default: {
+            luaL_error(l, "Internal error in aud_state! :(");
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
 // eng.sound_play(source, params) -> sound
 static int api_sound_play() {
     Sound snd = luaL_checkinteger(l, 1);
@@ -685,13 +703,13 @@ static const luaL_Reg registry[] = {
     { "window_size",        api_window_size        },
     { "size",               api_size               },
 
-    { "load_sound",       api_load_sound       },
-    { "sound_play",       api_sound_play       },
-    { "sound_gain",       api_sound_gain       },
-    { "sound_pitch",      api_sound_pitch      },
-    //{ "sound_is_playing", api_sound_is_playing },
-    { "listener",         api_listener         },
-    { "orientation",      api_orientation      },
+    { "load_sound",  api_load_sound       },
+    { "sound_play",  api_sound_play       },
+    { "sound_gain",  api_sound_gain       },
+    { "sound_pitch", api_sound_pitch      },
+    { "sound_state", api_sound_state      },
+    { "listener",    api_listener         },
+    { "orientation", api_orientation      },
 
     { "perlin", api_perlin },
 
@@ -785,6 +803,7 @@ Application app = {
 
 static int require_fs_read() {
     const char* module = luaL_checkstring(l, 1);
+
     for (char* p = (char *)module; *p; p++)
         if (*p == '.')
             *p = '/';
@@ -795,17 +814,26 @@ static int require_fs_read() {
     u32 length;
     const char* source = fs_read(path, &length);
 
-    if (!source) {
-        lua_pushnil(l);
-        lua_pushfstring(l, "Module '%s' could not be read by fs_read()!", module);
-        return 2;
+    if (source) {
+        if (luaL_loadbuffer(l, source, length, path) != LUA_OK) {
+            return lua_error(l);
+        }
+        return 1;
     }
 
-    if (luaL_loadbuffer(l, source, length, path) != LUA_OK) {
-        return lua_error(l);
+    snprintf(path, sizeof(path), "%s/init.lua", module);
+    source = fs_read(path, &length);
+
+    if (source) {
+        if (luaL_loadbuffer(l, source, length, path) != LUA_OK) {
+            return lua_error(l);
+        }
+        return 1;
     }
 
-    return 1;
+    lua_pushnil(l);
+    lua_pushfstring(l, "Module '%s' could not be read by fs_read()!", module);
+    return 2;
 }
 
 int main(int argc, char *argv[]) {

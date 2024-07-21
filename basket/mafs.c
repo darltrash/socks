@@ -34,7 +34,7 @@ void mat4_projection(f32 out[16], f32 fovy, f32 aspect, f32 near, f32 far, bool 
 
 void mat4_ortho(f32 out[16], f32 left, f32 right, f32 top, f32 bottom, f32 near, f32 far) {
 	memset(out, 0, 16 * sizeof(f32));
-	
+
 	out[0]  = 2.0 / (right - left);
 	out[5]  = 2.0 / (top - bottom);
 	out[10] = -2.0 / (far - near);
@@ -292,7 +292,7 @@ void mat4_from_angle_axis(f32 out[16], const f32 angle, const f32 axis[3]) {
 		m[0] = x*x*(1-c)+c;
 		m[1] = y*x*(1-c)+z*s;
 		m[2] = x*z*(1-c)-y*s;
-		
+
 		m[4] = x*y*(1-c)-z*s;
 		m[5] = y*y*(1-c)+c;
 		m[6] = y*z*(1-c)+x*s;
@@ -377,7 +377,7 @@ void vec_lerp(f32 *out, f32 *a, f32 *b, f32 t, int len) {
 
 void vec_norm(f32 *out, const f32 *in, int len) {
 	const f32 vlen = vec_len(in, len);
-	
+
 	if (vlen == 0.0f) {
 		for (int i = 0; i < len; i++)
 			out[i] = 0.0f;

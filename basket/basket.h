@@ -172,6 +172,13 @@ typedef int8_t  i8;
 
 
 // AUDIO.C //////////////////////////////////////////////////////
+    enum {
+        AUD_STATE_INITIAL = 0,
+        AUD_STATE_STOPPED,
+        AUD_STATE_PLAYING,
+        AUD_STATE_PAUSED
+    };
+
     typedef u32 Sound;  // Raw sound
     typedef u32 Source; // Sound source (spatial)
 
@@ -186,6 +193,7 @@ typedef int8_t  i8;
     void aud_set_pitch(Source audio, f32 pitch);
     void aud_set_area(Source audio, f32 distance);
     void aud_set_gain(Source audio, f32 gain);
+    int aud_state(Source audio);
 
     void aud_listener(f32 position[3]);
     void aud_orientation(f32 towards[3], f32 up[3]);

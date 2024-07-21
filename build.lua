@@ -100,7 +100,7 @@ local function compile(setup)
     local k = "-Ilib/ -Wstringop-overflow=0 -D_POSIX_C_SOURCE=200809L --std=c99 -DBASKET_COMMIT='\"" .. commit .. "\"' "
         .. (setup.file_flags or "")
 
-    local optimizations = "-fdata-sections -ffunction-sections -Wl,--gc-sections"
+    local optimizations = "-fdata-sections -ftree-loop-vectorize -ffunction-sections -Wl,--gc-sections"
     if setup.debug then
         k = k .. " -ggdb -DTFX_DEBUG -DTRASH_DEBUG"
         optimizations = "-ggdb"
@@ -113,7 +113,7 @@ local function compile(setup)
     os.execute("mkdir -p " .. dir)
     for n in io.popen("find basket/ -name \"*.c\" -type f"):lines() do
         local o_name = dir .. n:sub(1, #n - 2):gsub("/", ".") .. ".o"
-        local c = ("%s %s -c %s -o %s"):format(setup.cc, k, n, o_name)
+        local c = ("%s %s -Wl,--unresolved-symbols=ignore-in-object-files -c %s -o %s"):format(setup.cc, k, n, o_name)
         print("> compiling '" .. n .. "'")
         exec(c)
         print()
@@ -123,7 +123,7 @@ local function compile(setup)
 
 
     print("> linking")
-    exec(setup.cc, optimizations, dir .. "*.o", setup.flags, "-o", output)
+    exec(setup.cc, optimizations, setup.flags, dir .. "*.o", "-o", output)
     print()
 
     local function attempt(what)
@@ -162,7 +162,7 @@ local function release_linux(dbg)
 
         cc = os.getenv("CC") or "gcc",
         strip = "strip",
-        flags = "-lm -lSDL2 -lc -ldl",
+        flags = "-lc -ldl -lm -lmvec -lSDL2",
 
         debug = dbg,
 
@@ -184,7 +184,7 @@ local function release_windows(dbg)
         name = "x86_64-windows-gnu",
 
         cc = "x86_64-w64-mingw32-gcc",
-        flags = "-lSDL2",
+        flags = "-lSDL2 -static",
         strip = "x86_64-w64-mingw32-strip",
         extension = ".exe",
 
@@ -287,9 +287,26 @@ local function debug_windows()
     release_windows(true)
 end
 
+local function cleanup()
+    print("\n!! cleaning up this ugly garbage !!")
+
+    os.execute("rm -f basket/static.h")
+    os.execute("rm -f thing thing.*")
+    os.execute("rm -rf package.bsk")
+    os.execute("rm -rf out")
+end
+
+local function raw()
+    os.execute("make -C raw/")
+end
+
 -- I am sorry, windows users
 local function run()
     print("\n!! fast run mode!!! aeeee !!")
+
+    if os.getenv("SLEEPY_RAW") then
+        raw()
+    end
 
     moon()
 
@@ -306,15 +323,6 @@ local function run()
     print("all is okay! :)")
 end
 
-local function cleanup()
-    print("\n!! cleaning up this ugly garbage !!")
-
-    os.execute("rm -f basket/static.h")
-    os.execute("rm -f thing thing.*")
-    os.execute("rm -rf package.bsk")
-    os.execute("rm -rf out")
-end
-
 print("hey i build stuff hello")
 
 local options = {
@@ -322,6 +330,8 @@ local options = {
     pack = pack,
     run = run,
     moon = moon,
+
+    raw = raw,
 
     release = release,
     release_linux = release_linux,
@@ -341,6 +351,8 @@ options.help = function()
     for name in pairs(options) do
         table.insert(g, name)
     end
+
+    table.sort(g)
 
     print("\nthis is what i can do:")
     print("\t" .. table.concat(g, "\n\t"))

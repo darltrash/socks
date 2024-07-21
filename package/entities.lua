@@ -76,6 +76,18 @@ local init = {
         ent.particle_timer = 0
         ent.floats = true
         ent.tint = { 255, 255, 255, 255 }
+    end,
+
+    npc = function(ent, world)
+        local ok, r = pcall(require, "scripts." .. ent.tokens[2])
+        ent.texture = { 496, 480, 16, 16 }
+
+        if r then
+            r(ent)
+        end
+
+        ent.interactable = ent.on_interact and true or false
+        ent.floats = not ent.collider
     end
 }
 
@@ -298,6 +310,21 @@ local tick = {
             })
 
             ent.particle_timer = 0
+        end
+    end,
+
+    lightflicker = function(ent, world)
+        ent.cycles = (ent.cycles or 0) + 1
+
+        if ent.cycles == 2 then
+            ent.light.off = math.random(1, 3) == 1
+            ent.cycles = 0
+        end
+    end,
+
+    npc = function(ent, world)
+        if ent.interacting and ent.on_interact then
+            world:routine(ent.on_interact)
         end
     end
 }

@@ -87,5 +87,12 @@ if os.getenv("BSKT_LEVEL_VIEW") then
     return
 end
 
--- try to load the game
-xpcall(require, on_error, "game")
+-- -- try to load the game
+-- xpcall(require, on_error, "game")
+
+local _, game = xpcall(function(what)
+    eng.set_room(require(what))
+end, on_error, "game")
+
+--local _, screen = xpcall(require, on_error, "screen")
+--eng.set_room(screen, "assets/scr_cami_evilsoda.exm")
