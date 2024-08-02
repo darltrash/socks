@@ -41,7 +41,7 @@ make clear
 
 ## tools I used:
   - Libresprite
-  - VSCodium
+  - Zed :)
   - Bitwig Studio
   - Blender
 
