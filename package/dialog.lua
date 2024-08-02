@@ -111,22 +111,22 @@ dialog.frame = function(delta)
     local rw = w - (m * 2) - (mx) - (w / 6)
 
     local t = dialog.busy and 0 or 1
-    dialog.switch_up = fam.lerp(dialog.switch_up or 1, t, delta * 20)
+    dialog.switch_up = fam.decay(dialog.switch_up or 1, t, 3, delta)
     local e = fam.inv_square(dialog.switch_up) * 32
 
     local r = fam.to_u8((1 - dialog.switch_up) * 1.1)
 
     local c1 = { 0xd4, 0xbe, 0xfa, r }
+    local c2 = { 0x33, 0x00, 0x33, r }
     ui.rounded_rect((-w / 2) + m + mx, (h / 2) - (hh + m) + e, rw, hh, c1)
 
-    local c2 = { 0x33, 0x00, 0x33, r }
-    ui.print(dialog.text, (-w / 2) + (m * 2) + mx + 66, (h / 2) - hh + e, c2, rw - 80)
-
-    local y = (h / 2) - (160)
-
-    --eng.rect((-w/2)+(m*2)+mx+66, (h/2)-hh-(m/2), rw-80, hh-(m), 0xFF00FFFF
-
     if dialog.character then
+        ui.print(dialog.text, (-w / 2) + (m * 2) + mx + 66, (h / 2) - hh + e, c2, rw - 80)
+
+        local y = (h / 2) - (160)
+
+        --eng.rect((-w/2)+(m*2)+mx+66, (h/2)-hh-(m/2), rw-80, hh-(m), 0xFF00FFFF
+
         local avatar = dialog.character.avatar
 
         eng.draw {
@@ -140,6 +140,8 @@ dialog.frame = function(delta)
             tint = { 255, 255, 255, ((r / 255) ^ 2) * 255 },
             texture = { 0, 0, 1, 1 }
         }
+    else
+        ui.print(dialog.text, (-w / 2) + (m * 2) + mx, (h / 2) - (hh) + e, c2, rw - 80)
     end
 end
 

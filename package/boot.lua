@@ -29,7 +29,7 @@ local on_error = function(err)
             local w = ui.text_size(str)
 
             eng.rect(-138, -49, w + 16, 16, 0xFF0353FF)
-            ui.print(str .. "\n\n" .. err .. "\n" .. trace .. "\n", -131, -44, 0xFFFFFFFF)
+            ui.print(str .. "  - PLEASE REPORT THIS! \n\n" .. err .. "\n" .. trace .. "\n", -131, -44, 0xFFFFFFFF)
         end
     }
 
@@ -69,10 +69,11 @@ eng.frame = function(alpha, delta, focused)
     -- i deeply apologize for rendering frames even when the
     -- game is not in focus.
 
-    if focused then
-        eng.timer = eng.timer + delta
+    if not focused then
+        delta = 0
     end
 
+    eng.timer = eng.timer + delta
     eng.focused = focused
 
     if not room.frame then return end
@@ -82,17 +83,12 @@ end
 
 eng.timer = 0
 
-if os.getenv("BSKT_LEVEL_VIEW") then
-    xpcall(require, on_error, "viewer")
-    return
+local function load(what, ...)
+    local _, game = xpcall(function(params, ...)
+        local a = require(params)
+        eng.set_room(a, ...)
+    end, on_error, what, ...)
 end
 
--- -- try to load the game
--- xpcall(require, on_error, "game")
-
-local _, game = xpcall(function(what)
-    eng.set_room(require(what))
-end, on_error, "game")
-
---local _, screen = xpcall(require, on_error, "screen")
---eng.set_room(screen, "assets/scr_cami_evilsoda.exm")
+load("game")
+--load("tester")

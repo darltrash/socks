@@ -11,6 +11,26 @@
 #define STB_VORBIS_HEADER_ONLY
 #include "lib/stb_vorbis.h"
 
+enum {
+    NONE = 0,
+    STATIC,
+    STREAMING_OGG
+};
+
+typedef struct {
+    u8 type;
+    ALCint buffer;
+    ALCint source;
+    union {
+        stb_vorbis *vorbis;
+    };
+} SoundInternal;
+
+static int aud_streaming_thread() {
+
+
+    return 0;
+}
 
 int aud_init() {
     printf("setting up audio\n");
@@ -157,6 +177,10 @@ int aud_state(Source audio) {
     }
 
     return 0;
+}
+
+void aud_stop(Source audio) {
+    alSourceStop(audio);
 }
 
 int aud_byebye() {

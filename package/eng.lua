@@ -86,6 +86,23 @@ eng.focused = true
 -- Contains whether the game is running in debug mode
 eng.debug = false
 
+---@param seconds number
+-- Waits N seconds (1/1000 precision)
+eng.wait = function(seconds) end
+
+---@alias Thread integer
+
+---@param code string
+---@return Thread
+-- Offloads a task to the background
+eng.offload = function(code) end
+
+---@param thread Thread
+---@return any?
+---@return string?
+-- Check state/return of offloaded task.
+eng.fetch = function(thread) end
+
 ---@param name string
 ---@return string?
 ---@nodiscard
@@ -168,6 +185,11 @@ eng.quad = function(texture, x, y, color, scale_x, scale_y) end
 ---@see eng.quad
 -- Renders a rectangle
 eng.rect = function(x, y, w, h, color) end
+
+---@return number
+---@return number
+---@return boolean
+eng.direction = function() end
 
 ---@param key inputs
 ---@return number?

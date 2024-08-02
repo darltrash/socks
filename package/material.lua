@@ -1,6 +1,6 @@
 local materials = {}
 
-local texture = eng.load_image("assets/tex_material.png")
+local texture = eng.load_image('assets/tex_material.png')
 
 materials.lookup = {
     [0xFF0000FF] = { -- "RED" (bricc)
@@ -19,7 +19,7 @@ materials.lookup = {
         collides = true,
     },
 
-    [0xFFB6FF00] = { -- "CYAN" 
+    [0xFFB6FF00] = { -- "CYAN"
         collides = true,
     },
 
@@ -44,13 +44,13 @@ materials.lookup = {
     }
 }
 
-materials.from_uv = function (u, v)
+materials.from_uv = function(u, v)
     local x = math.floor(((u % 1) * texture.w) + 0.1)
     local y = math.floor(((v % 1) * texture.h) + 0.1)
 
     local i = (y * texture.w) + x
-    
-    local m = string.unpack("<I4", texture.pixels, (i*4) + 1)
+
+    local m = string.unpack("<I4", texture.pixels, (i * 4) + 1)
 
     local l = materials.lookup[m]
     if not l then

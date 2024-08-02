@@ -43,7 +43,7 @@ AND USER NEEDS, IT IS GREAT THAT THIS PROTOCOL EXISTS.
 THERE'S A LOT OF STUFF TO BE SAID ABOUT HOW WE HANDLE SOCIAL MEDIA TODAY, AND I FEEL LIKE THERE'S SO MUCH TO BE DONE ABOUT IT,
 I ALSO FEEL LIKE WE, AS SOCIAL ANIMALS, SHOULDN'T BE ATTACHED TO MEGACORPORATIONS MAKING MONEY OFF OUR BARE EXISTENCE THROUGH
 THE PRIVATIZATION AND MONOPOLY ON SUCH HUMAN NEEDS, SUCH AS THE NEED OF COMMUNICATION, THE NEED OF SAFETY, THE NEED OF BEING
-PART OF SOMETHING, THE NEED OF BEING CONNECTED. 
+PART OF SOMETHING, THE NEED OF BEING CONNECTED.
 
 THERE'S NOT MUCH STUFF THAT I CAN SAY THAT ARE EFFECTIVELY WORSE THAN STRIPPING SOMEONE OF IT'S PRIMAL NEEDS, MUCH LESS
 TURN IT INTO A ONE-WAY SYSTEM WHERE ALL THE POWER IS STRIPPED FROM US, SO WE GET FED A BUNCH OF CRAP, A BUNCH OF LOW QUALITY
@@ -52,7 +52,7 @@ MINDLESS CONTENT, OR WORSE, SHAPING OUR MINDS AND THUS, THE ART THAT WE CREATE, 
 
 TO BE AN ARTIST IS TO DIE TRYING.
 
-THEY HAVE FIGURED OUT HOW TO COLONIZE OUR MINDS, TO STEAL OUR RESOURCES, TO STRIP US FROM ALL THAT MAKES US HUMAN, OF ALL 
+THEY HAVE FIGURED OUT HOW TO COLONIZE OUR MINDS, TO STEAL OUR RESOURCES, TO STRIP US FROM ALL THAT MAKES US HUMAN, OF ALL
 THAT FILLS US WITH JOY IF IT'S NOT TO MAKE THEM RICHER AND MORE POWERFUL.
 
 THIS WORLD TRIES TO TEACH US THAT OUR FUNCTION IS TO CONSUME, TO MAKE US THINK THAT CREATING IS SOMEHOW A WASTE OF TIME,
@@ -62,7 +62,7 @@ WE LOVE, WE CRY, WE END.
 
 SO, IF YOU ARE READING, PLEASE, CONSIDER MOVING OUT FROM PLATFORMS LIKE THESE, CONSIDER TO BUY LOCAL STUFF ONLY, CONSIDER
 TO STOP GOING TO STARBUCKS, GET MAD! GET ANGRY! FIGHT FOR THE INDEPENDENCE OF HUMAN THOUGHT! FIGHT FOR THE DECAYING SOULS
-OF THE LONELY, GO OUT AND CONSUME INDEPENDENT CONTENT, HELP INDEPENDENT CREATORS, OUR ONLY HOPE IS IN LOVE. 
+OF THE LONELY, GO OUT AND CONSUME INDEPENDENT CONTENT, HELP INDEPENDENT CREATORS, OUR ONLY HOPE IS IN LOVE.
 
 DO YOU REALLY LIKE CHEESE? OR ARE YOU JUST A CHEESE POSER? ARE YOU HAPPIER OR SADDER?
 
@@ -86,6 +86,12 @@ THE VESSEL I MADE, FOR FUN.
 
 I MADE YOU SPECIAL.
 I MADE YOU AS A VESSEL FOR FUN.
+
+MY BRAIN HAS BEEN RECHARGED, I FEEL IT IS TIME TO CREATE THE THING, TO GO ON
+AND WRITE GARBAGE, ONLINE, FOR EVERYONE TO SEE!
+
+WHERE IS MY FLIPPIN TWITTIN LOVE DESTRUCTION MACHINE FOR THE VERY DISTASTEFUL?
+IT IS A SPECIL DEAL OF ABOUT 3 POWERS!
 ]]
 
 -- Function to split text into words
@@ -101,18 +107,18 @@ end
 local function build_markov_chain(text)
     local words = split_text(text)
     local markov_chain = {}
-    
+
     for i = 1, #words - 1 do
         local current_word = words[i]
         local next_word = words[i + 1]
-        
+
         if not markov_chain[current_word] then
             markov_chain[current_word] = {}
         end
-        
+
         table.insert(markov_chain[current_word], next_word)
     end
-    
+
     return markov_chain
 end
 
@@ -120,10 +126,10 @@ end
 local function generate_sentence(markov_chain, starting_word, max_words)
     local current_word = starting_word:match("%S+$") -- Starting word
     local sentence = starting_word
-    
+
     for _ = 1, max_words do
         local next_words = markov_chain[current_word]
-        
+
         if next_words then
             local next_word_index = math.random(1, #next_words)
             local next_word = next_words[next_word_index]
@@ -133,7 +139,7 @@ local function generate_sentence(markov_chain, starting_word, max_words)
             break
         end
     end
-    
+
     return sentence
 end
 
@@ -157,13 +163,12 @@ local function split_into_syllables(word)
             table.insert(syllables, current_syllable)
             current_syllable = ""
         end
-
     end
 
     for i = 1, #word do
         local char = string.sub(word, i, i)
 
-        if is_vowel(string.sub(word, i+1, i+1)) or char == " " then
+        if is_vowel(string.sub(word, i + 1, i + 1)) or char == " " then
             end_syllable()
             current_syllable = char
         else
@@ -180,9 +185,9 @@ end
 local markov_chain = build_markov_chain(sample_text)
 
 return {
-    markov = function (start, words)
+    markov = function(start, words)
         return generate_sentence(markov_chain, start, words)
     end,
-    
+
     syllabify = split_into_syllables
 }

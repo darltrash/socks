@@ -1,6 +1,7 @@
 // implements the lua api that pilots this huge mech of a tech stack.
 
-#include <SDL2/SDL_messagebox.h>
+#include <SDL2/SDL_thread.h>
+#include <SDL2/SDL_timer.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,11 +11,11 @@
 #include "lib/minilua.h"
 #include "lib/stb_perlin.h"
 
-static lua_State *l;
+static lua_State *L;
 
-static int api_noop() { return 0; }
+static int api_noop(lua_State *l) { return 0; }
 
-static void get_vector(f32 *out, int tableIndex, int len) {
+static void get_vector(lua_State *l, f32 *out, int tableIndex, int len) {
     luaL_checktype(l, tableIndex, LUA_TTABLE);
 
     for (size_t i = 0; i < len; ++i) {
@@ -26,7 +27,58 @@ static void get_vector(f32 *out, int tableIndex, int len) {
     }
 }
 
-static int api_reload_tex() {
+static int require_fs_read(lua_State *l) {
+    const char* module = luaL_checkstring(l, 1);
+
+    for (char* p = (char *)module; *p; p++)
+        if (*p == '.')
+            *p = '/';
+
+    char path[256];
+    snprintf(path, sizeof(path), "%s.lua", module);
+
+    u32 length;
+    const char* source = fs_read(path, &length);
+
+    if (source) {
+        if (luaL_loadbuffer(l, source, length, path) != LUA_OK) {
+            return lua_error(l);
+        }
+        return 1;
+    }
+
+    // TODO: TIDY IT UP
+
+    snprintf(path, sizeof(path), "%s/init.lua", module);
+    source = fs_read(path, &length);
+
+    if (source) {
+        if (luaL_loadbuffer(l, source, length, path) != LUA_OK) {
+            return lua_error(l);
+        }
+        return 1;
+    }
+
+    lua_pushnil(l);
+    lua_pushfstring(l, "Module '%s' could not be read by fs_read()!", module);
+    return 2;
+}
+
+static void add_package_searcher(lua_State *l) {
+    lua_getglobal(l, "package");
+    lua_getfield(l, -1, "searchers");
+
+    lua_pushcfunction(l, require_fs_read);
+    for (int i = (int)lua_rawlen(l, -2) + 1; i > 1; i--) {
+        lua_rawgeti(l, -2, i - 1);
+        lua_rawseti(l, -3, i);
+    }
+    lua_rawseti(l, -2, 1);
+
+    lua_pop(l, 2);
+}
+
+static int api_reload_tex(lua_State *l) {
     u32 length = 0;
     static u8 main, lumos;
     if (main)
@@ -52,7 +104,7 @@ static int api_reload_tex() {
     return 0;
 }
 
-static int api_img_load() {
+static int api_load_image(lua_State *l) {
     u32 length;
     char *str = fs_read(luaL_checkstring(l, 1), &length);
 
@@ -75,7 +127,7 @@ static int api_img_load() {
 }
 
 // eng.read(filename) -> string?
-static int api_fs_read() {
+static int api_fs_read(lua_State *l) {
     u32 size;
     char *str = fs_read(luaL_checkstring(l, 1), &size);
 
@@ -90,7 +142,7 @@ static int api_fs_read() {
     return 1;
 }
 
-static int api_videomode() {
+static int api_videomode(lua_State *l) {
     ren_videomode(
         luaL_checknumber(l, 1),
         luaL_checknumber(l, 2),
@@ -101,13 +153,13 @@ static int api_videomode() {
 }
 
 // eng.camera(from, to)
-static int api_camera() {
+static int api_camera(lua_State *l) {
     f32 a[3];
     f32 b[3];
     f32 c[3];
-    get_vector(a, 1, 3);
-    get_vector(b, 2, 3);
-    get_vector(c, 3, 3);
+    get_vector(l, a, 1, 3);
+    get_vector(l, b, 2, 3);
+    get_vector(l, c, 3, 3);
 
     ren_camera(a, b, c);
 
@@ -115,7 +167,7 @@ static int api_camera() {
 }
 
 // eng.load_model(filename) -> { begin, length }
-static int api_load_model() {
+static int api_load_model(lua_State *l) {
     const char *file = luaL_checkstring(l, 1);
 
     u32 size;
@@ -166,7 +218,7 @@ static int api_load_model() {
 }
 
 
-static int api_load_sound() {
+static int api_load_sound(lua_State *l) {
     Sound snd;
 
     const char *file = luaL_checkstring(l, 1);
@@ -194,25 +246,25 @@ static int api_load_sound() {
     return 1;
 }
 
-static int api_listener() {
+static int api_listener(lua_State *l) {
     f32 position[3];
-    get_vector(position, 1, 3);
+    get_vector(l, position, 1, 3);
     aud_listener(position);
     return 0;
 }
 
-static int api_orientation() {
+static int api_orientation(lua_State *l) {
     f32 orientation[6];
     f32 up[6];
-    get_vector(orientation, 1, 3);
-    get_vector(up, 2, 3);
+    get_vector(l, orientation, 1, 3);
+    get_vector(l, up, 2, 3);
 
     aud_orientation(orientation, up);
     return 0;
 }
 
 
-static Color fetch_color(int a) {
+static Color fetch_color(lua_State *l, int a) {
     Color color = COLOR_WHITE;
 
     if (!lua_isnoneornil(l, a)) {
@@ -237,7 +289,7 @@ static Color fetch_color(int a) {
     return color;
 }
 
-static TextureSlice fetch_texture(int a) {
+static TextureSlice fetch_texture(lua_State *l, int a) {
     TextureSlice texture = { 0, 0, 0, 0 };
 
     if (!lua_isnil(l, a)) {
@@ -261,7 +313,7 @@ static TextureSlice fetch_texture(int a) {
     return texture;
 }
 
-static Range fetch_range(int a) {
+static Range fetch_range(lua_State *l, int a) {
     Range range = { 0, 0 };
 
     if (!lua_isnil(l, a)) {
@@ -284,7 +336,7 @@ static Range fetch_range(int a) {
 }
 
 
-static int fetch_call(RenderCall *call) {
+static int fetch_call(lua_State *l, RenderCall *call) {
     luaL_checktype(l, 1, LUA_TTABLE);
 
     lua_getfield(l, 1, "disable");
@@ -305,7 +357,7 @@ static int fetch_call(RenderCall *call) {
     }
 
     lua_getfield(l, 1, "tint");
-    call->tint = fetch_color(-1);
+    call->tint = fetch_color(l, -1);
 
     lua_getfield(l, 1, "mesh");
     if (!lua_istable(l, -1)) {
@@ -322,18 +374,18 @@ static int fetch_call(RenderCall *call) {
         lua_pop(l, 1);
 
     lua_getfield(l, 1, "texture");
-    call->texture = fetch_texture(-1);
+    call->texture = fetch_texture(l, -1);
 
     lua_getfield(l, 1, "range");
-    call->range = fetch_range(-1);
+    call->range = fetch_range(l, -1);
 
     return 0;
 }
 
 // eng.render(render_call)
-static int api_render() {
+static int api_render(lua_State *l) {
     RenderCall call = { false, IDENTITY_MATRIX, COLOR_WHITE, {}, {0, 0, 0, 0}, NULL };
-    if (fetch_call(&call))
+    if (fetch_call(l, &call))
         return 0;
 
     ren_render(call);
@@ -342,10 +394,10 @@ static int api_render() {
 }
 
 // eng.draw(render_call)
-static int api_draw() {
+static int api_draw( lua_State *l) {
     RenderCall call = { false, IDENTITY_MATRIX, COLOR_WHITE, {}, {0, 0, 0, 0}, NULL };
 
-    if (fetch_call(&call))
+    if (fetch_call(l, &call))
         return 0;
 
     ren_draw(call);
@@ -354,7 +406,7 @@ static int api_draw() {
 }
 
 // eng.light(pos, color)
-static int api_light() {
+static int api_light(lua_State *l) {
     Light light;
 
     luaL_checktype(l, 1, LUA_TTABLE);
@@ -379,22 +431,22 @@ static int api_light() {
 }
 
 
-static int api_far() {
-    ren_far(luaL_checknumber(l, 1), fetch_color(2));
+static int api_far(lua_State *l) {
+    ren_far(luaL_checknumber(l, 1), fetch_color(l, 2));
     return 0;
 }
 
-static int api_dithering() {
+static int api_dithering(lua_State *l) {
     ren_dithering(lua_toboolean(l, 1));
     return 0;
 }
 
-static int api_ambient() {
-    ren_ambient(fetch_color(1));
+static int api_ambient(lua_State *l) {
+    ren_ambient(fetch_color(l, 1));
     return 0;
 }
 
-static int api_snapping() {
+static int api_snapping(lua_State *l) {
     ren_snapping(luaL_checknumber(l, 1));
     return 0;
 }
@@ -402,13 +454,13 @@ static int api_snapping() {
 
 
 // ren.quad(texture, x, y, color)
-static int api_quad() {
+static int api_quad(lua_State *l) {
     Quad quad = DEFAULT_QUAD;
 
-    quad.texture = fetch_texture(1);
+    quad.texture = fetch_texture(l, 1);
     quad.position[0] = lua_tonumber(l, 2);
     quad.position[1] = lua_tonumber(l, 3);
-    quad.color = fetch_color(4);
+    quad.color = fetch_color(l, 4);
 
     if (!lua_isnoneornil(l, 5))
         quad.scale[0] = quad.scale[1] = lua_tonumber(l, 5);
@@ -423,19 +475,31 @@ static int api_quad() {
 }
 
 // ren.rect(x, y, w, h, color)
-static int api_rect() {
+static int api_rect( lua_State *l) {
     ren_rect(
         lua_tonumber(l, 1),
         lua_tonumber(l, 2),
         lua_tonumber(l, 3),
         lua_tonumber(l, 4),
-        fetch_color(5)
+        fetch_color(l, 5)
     );
 
     return 0;
 }
 
-static int api_input() {
+// X, Y, MOVING
+static int api_direction(lua_State *l) {
+    f32 direction[2];
+    bool moving = inp_direction(direction);
+
+    lua_pushnumber(l, direction[0]);
+    lua_pushnumber(l, direction[1]);
+    lua_pushboolean(l, moving);
+
+    return 3;
+}
+
+static int api_input(lua_State *l) {
     // KEEP THIS SYNCED WITH COMMON.H
     const char *options[] = {
         "none",
@@ -460,26 +524,26 @@ static int api_input() {
     return 1;
 }
 
-static int api_text() {
+static int api_text( lua_State *l) {
     lua_pushstring(l, inp_text());
     return 1;
 }
 
-static int api_log() {
+static int api_log( lua_State *l) {
     size_t _ = 0;
     ren_log("%s", luaL_tolstring(l, 1, &_));
 
     return 0;
 }
 
-static int api_mouse_down() {
+static int api_mouse_down( lua_State *l) {
     bool down = inp_mouse_down(luaL_checkinteger(l, 1));
     lua_pushboolean(l, down);
 
     return 1;
 }
 
-static int api_mouse_position() {
+static int api_mouse_position( lua_State *l) {
     i16 x, y;
     ren_mouse_position(&x, &y);
 
@@ -489,7 +553,7 @@ static int api_mouse_position() {
     return 2;
 }
 
-static int api_raw_mouse_position() {
+static int api_raw_mouse_position( lua_State *l) {
     u16 x, y;
     inp_mouse_position(&x, &y);
 
@@ -499,7 +563,7 @@ static int api_raw_mouse_position() {
     return 2;
 }
 
-static int api_window_size() {
+static int api_window_size( lua_State *l) {
     u16 w, h;
     eng_window_size(&w, &h);
 
@@ -509,7 +573,7 @@ static int api_window_size() {
     return 2;
 }
 
-static int api_size() {
+static int api_size( lua_State *l) {
     u16 w, h;
     ren_size(&w, &h);
 
@@ -519,7 +583,7 @@ static int api_size() {
     return 2;
 }
 
-static int api_sound_state() {
+static int api_sound_state( lua_State *l) {
     Sound snd = luaL_checkinteger(l, 1);
     int state = aud_state(snd);
 
@@ -538,7 +602,7 @@ static int api_sound_state() {
 }
 
 // eng.sound_play(source, params) -> sound
-static int api_sound_play() {
+static int api_sound_play(lua_State *l) {
     Sound snd = luaL_checkinteger(l, 1);
 
     Source src;
@@ -610,22 +674,27 @@ static int api_sound_play() {
     return 1;
 }
 
-static int api_sound_gain() {
+static int api_sound_gain( lua_State *l) {
     aud_set_gain(luaL_checkinteger(l, 1), luaL_checknumber(l, 2));
     return 1;
 }
 
-static int api_sound_pitch() {
+static int api_sound_pitch( lua_State *l) {
     aud_set_pitch(luaL_checkinteger(l, 1), luaL_checknumber(l, 2));
     return 1;
 }
 
-static int api_sound_area() {
+static int api_sound_area( lua_State *l) {
     aud_set_area(luaL_checkinteger(l, 1), luaL_checknumber(l, 2));
     return 1;
 }
 
-static int api_perlin() {
+static int api_sound_stop( lua_State *l) {
+    aud_stop(luaL_checkinteger(l, 1));
+    return 1;
+}
+
+static int api_perlin( lua_State *l) {
     float x = luaL_checknumber(l, 1);
     float y = luaL_checknumber(l, 2);
     float z = luaL_checknumber(l, 3);
@@ -638,7 +707,7 @@ static int api_perlin() {
     return 1;
 }
 
-static int api_identity() {
+static int api_identity( lua_State *l) {
     int o = sav_identity(lua_tostring(l, 1));
     if (o)
         luaL_error(l, "Could not set savefile identity!");
@@ -646,7 +715,7 @@ static int api_identity() {
     return 0;
 }
 
-static int api_store() {
+static int api_store( lua_State *l) {
     size_t size;
     const char *str = luaL_checklstring(l, 1, &size);
     int o = sav_store(str, size);
@@ -656,7 +725,7 @@ static int api_store() {
     return 0;
 }
 
-static int api_retrieve() {
+static int api_retrieve(lua_State *l) {
     u32 size = 0;
     char *a = sav_retrieve(&size);
 
@@ -670,20 +739,200 @@ static int api_retrieve() {
     return 1;
 }
 
-static int api_exit() {
+static int api_exit(lua_State *l) {
     eng_close();
     return 0;
 }
 
+static int api_wait(lua_State *l) {
+    SDL_Delay(luaL_checknumber(l, 1) * 1000.0);
+    return 0;
+}
 
-static const luaL_Reg registry[] = {
+typedef struct {
+    SDL_Thread *thread;
+    lua_State *L;
+    int result_ref;
+    bool finished;
+    bool in_use;
+} ThreadData;
+
+#define MAX_THREADS 256
+static ThreadData thread_data[MAX_THREADS];
+
+static int thread_function(void *data) {
+    ThreadData *tdata = (ThreadData *)data;
+
+    lua_getglobal(tdata->L, "thread_function");
+
+    if (lua_pcall(tdata->L, 0, 1, 0) != LUA_OK) {
+        fprintf(stderr, "Error running Lua function: %s\n", lua_tostring(tdata->L, -1));
+        lua_pop(tdata->L, 1);
+        tdata->finished = true;
+        return -1;
+    }
+
+    // Store the result reference
+    tdata->result_ref = luaL_ref(tdata->L, LUA_REGISTRYINDEX);
+    tdata->finished = true;
+    return 0;
+}
+
+// Copy a Lua value from one state to another
+static void copy_value(lua_State *from, lua_State *to, int index) {
+    switch (lua_type(from, index)) {
+        case LUA_TNUMBER:
+            lua_pushnumber(to, lua_tonumber(from, index));
+            break;
+        case LUA_TSTRING: {
+            size_t l;
+            const char *str = luaL_checklstring(from, index, &l);
+            lua_pushlstring(to, str, l);
+            break;
+        }
+        case LUA_TBOOLEAN:
+            lua_pushboolean(to, lua_toboolean(from, index));
+            break;
+        case LUA_TTABLE:
+            lua_newtable(to);
+            lua_pushnil(from);  // first key
+            while (lua_next(from, index - 1)) {
+                copy_value(from, to, -2);  // copy key
+                copy_value(from, to, -1);  // copy value
+                lua_settable(to, -3);
+                lua_pop(from, 1);  // remove value, keep key for next iteration
+            }
+            break;
+        default:
+            lua_pushnil(to);
+    }
+}
+
+// Offload a function to a new thread
+static int api_offload(lua_State *l) {
+    u32 thread_id;
+
+    ThreadData *tdata = NULL;
+
+    // Find a free thread slot
+    for (thread_id = 0; thread_id < MAX_THREADS; thread_id++) {
+        if (!thread_data[thread_id].in_use) {
+            tdata = &thread_data[thread_id];
+            break;
+        }
+    }
+
+    if (tdata == NULL) {
+        lua_pushnil(l);
+        lua_pushstring(l, "Too many threads");
+        return 2; // Error: Too many threads
+    }
+
+    // Get the function code as a string
+    size_t len;
+    const char *function_code = luaL_checklstring(l, 1, &len);
+
+    // Create a new Lua state for the thread
+    tdata->L = luaL_newstate();
+    luaL_openlibs(tdata->L);
+
+    add_package_searcher(l);
+
+    static const luaL_Reg registry[] = {
+        { "read",       api_fs_read    },
+        { "load_sound", api_load_sound },
+        { "load_image", api_load_image },
+        { "load_model", api_load_model },
+        { "perlin",     api_perlin     },
+        { "wait",       api_wait       },
+
+        { 0, 0 }
+    };
+
+    lua_newtable(tdata->L);
+    luaL_setfuncs(tdata->L, registry, 0);
+    lua_setglobal(tdata->L, "eng");
+
+    // Load the function code into the new Lua state
+    if (luaL_loadbuffer(tdata->L, function_code, len, "thread_function") != LUA_OK) {
+        lua_pushnil(l);
+        lua_pushstring(l, lua_tostring(tdata->L, -1));
+        lua_close(tdata->L);
+        return 2; // Error: Failed to load function code
+    }
+
+    // Set the function as a global in the new Lua state
+    lua_setglobal(tdata->L, "thread_function");
+
+    // Initialize thread state
+    tdata->finished = false;
+    tdata->result_ref = LUA_NOREF;
+    tdata->in_use = true;
+
+    // Create the thread
+    tdata->thread = SDL_CreateThread(thread_function, "WorkerThread", tdata);
+    if (!tdata->thread) {
+        tdata->in_use = false;
+        lua_close(tdata->L);  // Clean up Lua state
+        lua_pushnil(l);
+        lua_pushstring(l, "Failed to create thread");
+        return 2; // Error: Failed to create thread
+    }
+
+    lua_pushinteger(l, thread_id);
+    return 1; // Return the thread ID
+}
+
+// Fetch the result of a thread's execution if it is finished
+static int api_fetch(lua_State *l) {
+    u32 thread_id = luaL_checkinteger(l, 1);
+    if (thread_id >= MAX_THREADS || !thread_data[thread_id].in_use) {
+        lua_pushnil(l);
+        lua_pushstring(l, "Invalid thread ID");
+        return 2; // Error: Invalid thread ID
+    }
+
+    ThreadData *tdata = &thread_data[thread_id];
+
+    // Check if the thread is finished
+    if (tdata->finished) {
+        // Retrieve the result from the thread's Lua state
+        lua_rawgeti(tdata->L, LUA_REGISTRYINDEX, tdata->result_ref);
+
+        // Transfer the result back to the main Lua state
+        copy_value(tdata->L, l, -1);
+        lua_pop(tdata->L, 1);  // pop the value from the thread's state
+
+        // Clean up and mark the slot as available for reuse
+        SDL_WaitThread(tdata->thread, NULL);
+        luaL_unref(tdata->L, LUA_REGISTRYINDEX, tdata->result_ref);
+        lua_close(tdata->L);
+        tdata->in_use = false;
+
+        return 1; // Return the result
+    }
+
+    // Thread is not finished
+    lua_pushnil(l);
+    return 1;
+}
+
+
+static const luaL_Reg full_registry[] = {
     { "read",       api_fs_read    },
+    { "load_sound", api_load_sound },
+    { "load_image", api_load_image   },
+    { "load_model", api_load_model },
+    { "perlin",     api_perlin     },
 
-    { "load_image", api_img_load   },
+    { "offload",    api_offload    },
+    { "fetch",      api_fetch      },
+
+    { "wait",       api_wait       },
+
     { "reload_tex", api_reload_tex },
     { "videomode",  api_videomode  },
     { "camera",     api_camera     },
-    { "load_model", api_load_model },
     { "render",     api_render     },
     { "draw",       api_draw       },
     { "light",      api_light      },
@@ -693,6 +942,7 @@ static const luaL_Reg registry[] = {
     { "snapping",   api_snapping   },
     { "quad",       api_quad       },
     { "rect",       api_rect       },
+    { "direction",  api_direction  },
     { "input",      api_input      },
     { "text",       api_text       },
     { "log",        api_log        },
@@ -703,15 +953,13 @@ static const luaL_Reg registry[] = {
     { "window_size",        api_window_size        },
     { "size",               api_size               },
 
-    { "load_sound",  api_load_sound       },
     { "sound_play",  api_sound_play       },
     { "sound_gain",  api_sound_gain       },
     { "sound_pitch", api_sound_pitch      },
     { "sound_state", api_sound_state      },
+    { "sound_stop",  api_sound_stop       },
     { "listener",    api_listener         },
     { "orientation", api_orientation      },
-
-    { "perlin", api_perlin },
 
     { "identity", api_identity },
     { "store",    api_store },
@@ -730,11 +978,11 @@ static const luaL_Reg registry[] = {
 static int init(void *userdata) {
     u32 length = 0;
     char *boot_lua = fs_read("boot.lua", &length);
-    luaL_loadbuffer(l, boot_lua, length, "boot.lua");
-    lua_call(l, 0, 0);
+    luaL_loadbuffer(L, boot_lua, length, "boot.lua");
+    lua_call(L, 0, 0);
     free(boot_lua);
 
-    api_reload_tex();
+    api_reload_tex(L);
 
 #ifdef TRASH_DEBUG
     eng_set_debug(true);
@@ -744,14 +992,14 @@ static int init(void *userdata) {
 }
 
 static int tick(f64 timestep) {
-    lua_getglobal(l, "eng");
-    lua_getfield(l, -1, "tick");
+    lua_getglobal(L, "eng");
+    lua_getfield(L, -1, "tick");
 
-    lua_pushnumber(l, timestep);
+    lua_pushnumber(L, timestep);
 
-    int result = lua_pcall(l, 1, 0, 0);
+    int result = lua_pcall(L, 1, 0, 0);
 
-    lua_pop(l, 1);
+    lua_pop(L, 1);
 
     return result != LUA_OK;
 }
@@ -760,33 +1008,33 @@ static int frame(f64 alpha, f64 delta) {
     ren_log("\n// ENVIRONMENT //////");
 
     //lua_gc(l, LUA_GCCOLLECT, 0);
-    u32 usage = lua_gc(l, LUA_GCCOUNT, 0);
+    u32 usage = lua_gc(L, LUA_GCCOUNT, 0);
     ren_log("LUA MEMORY: %ukb", usage);
     ren_log("FPS: %u", (u16)(1.0/delta));
 
-    lua_getglobal(l, "eng");
-    lua_getfield(l, -1, "frame");
+    lua_getglobal(L, "eng");
+    lua_getfield(L, -1, "frame");
 
-    lua_pushnumber(l, alpha);
-    lua_pushnumber(l, delta);
-    lua_pushboolean(l, eng_is_focused());
+    lua_pushnumber(L, alpha);
+    lua_pushnumber(L, delta);
+    lua_pushboolean(L, eng_is_focused());
 
-    int result = lua_pcall(l, 3, 0, 0);
+    int result = lua_pcall(L, 3, 0, 0);
 
-    lua_pop(l, -2);
+    lua_pop(L, -2);
 
     return result != LUA_OK;
 }
 
 static int close(int ret) {
-    lua_getglobal(l, "eng");
-    lua_getfield(l, -1, "close");
+    lua_getglobal(L, "eng");
+    lua_getfield(L, -1, "close");
 
-    int result = lua_pcall(l, 0, 0, 0);
+    int result = lua_pcall(L, 0, 0, 0);
 
-    lua_pop(l, 1);
+    lua_pop(L, 1);
 
-    lua_close(l);
+    lua_close(L);
 
     return 0;
 }
@@ -801,99 +1049,51 @@ Application app = {
     .close = close
 };
 
-static int require_fs_read() {
-    const char* module = luaL_checkstring(l, 1);
-
-    for (char* p = (char *)module; *p; p++)
-        if (*p == '.')
-            *p = '/';
-
-    char path[256];
-    snprintf(path, sizeof(path), "%s.lua", module);
-
-    u32 length;
-    const char* source = fs_read(path, &length);
-
-    if (source) {
-        if (luaL_loadbuffer(l, source, length, path) != LUA_OK) {
-            return lua_error(l);
-        }
-        return 1;
-    }
-
-    snprintf(path, sizeof(path), "%s/init.lua", module);
-    source = fs_read(path, &length);
-
-    if (source) {
-        if (luaL_loadbuffer(l, source, length, path) != LUA_OK) {
-            return lua_error(l);
-        }
-        return 1;
-    }
-
-    lua_pushnil(l);
-    lua_pushfstring(l, "Module '%s' could not be read by fs_read()!", module);
-    return 2;
-}
-
 int main(int argc, char *argv[]) {
+    //freopen("output.txt", "a+", stdout);
+
     printf("setting up environment.\n");
 
-    l = luaL_newstate();
-    if(l == NULL)
+    L = luaL_newstate();
+    if(L == NULL)
         return true;
 
-    luaL_openlibs(l);
-    lua_newtable(l);
-    luaL_setfuncs(l, registry, 0);
-
+    luaL_openlibs(L);
+    lua_newtable(L);
+    luaL_setfuncs(L, full_registry, 0);
 
     #ifdef __linux
-        lua_pushstring(l, "linux");
+        lua_pushstring(L, "linux");
     #elif _WIN32
-        lua_pushstring(l, "windows");
+        lua_pushstring(L, "windows");
     #else
-        lua_pushstring(l, "unknown");
+        lua_pushstring(L, "unknown");
     #endif
-    lua_setfield(l, -2, "os");
+    lua_setfield(L, -2, "os");
 
 
-    lua_newtable(l);
+    lua_newtable(L);
     for (int i = 0; i < argc; i++) {
-        lua_pushnumber(l, i);
-        lua_pushstring(l, argv[i]);
-        lua_settable(l, -3);
+        lua_pushnumber(L, i);
+        lua_pushstring(L, argv[i]);
+        lua_settable(L, -3);
     }
-    lua_setfield(l, -2, "args");
+    lua_setfield(L, -2, "args");
 
 
-    lua_pushboolean(l, eng_is_debug());
-    lua_setfield(l, -2, "debug");
-
+    lua_pushboolean(L, eng_is_debug());
+    lua_setfield(L, -2, "debug");
 
     #ifndef BASKET_COMMIT
     #define BASKET_COMMIT "unknown"
     #endif
 
-    lua_pushstring(l, BASKET_COMMIT);
-    lua_setfield(l, -2, "commit");
+    lua_pushstring(L, BASKET_COMMIT);
+    lua_setfield(L, -2, "commit");
 
+    lua_setglobal(L, "eng");
 
-    lua_setglobal(l, "eng");
-
-
-    lua_getglobal(l, "package");
-    lua_getfield(l, -1, "searchers");
-
-    lua_pushcfunction(l, require_fs_read);
-    for (int i = (int)lua_rawlen(l, -2) + 1; i > 1; i--) {
-        lua_rawgeti(l, -2, i - 1);
-        lua_rawseti(l, -3, i);
-    }
-    lua_rawseti(l, -2, 1);
-
-    lua_pop(l, 2);
-
+    add_package_searcher(L);
 
     int o = eng_main(app, argv[0]);
 

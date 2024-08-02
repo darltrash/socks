@@ -1,5 +1,10 @@
 local fam = {}
 
+-- t = unlerp(a, b, lerp(a, b, t))
+fam.unlerp = function(a, b, v)
+    return fam.clamp((v - a) / (b - a), 0, 1)
+end
+
 fam.lerp = function(a, b, t)
     return a * (1 - t) + b * t
 end
@@ -26,7 +31,7 @@ fam.hex = function(hex, alpha)
     }
 end
 
-fam.hsl = function (h, s, l)
+fam.hsl = function(h, s, l)
     if s == 0 then return l, l, l end
     local function to(p, q, t)
         if t < 0 then t = t + 1 end
@@ -41,7 +46,7 @@ fam.hsl = function (h, s, l)
     return to(p, q, h + .33334), to(p, q, h), to(p, q, h - .33334)
 end
 
-fam.rgb2hsl = function (r, g, b)
+fam.rgb2hsl = function(r, g, b)
     local max, min = math.max(r, g, b), math.min(r, g, b)
     local b = max + min
     local h = b / 2
@@ -49,9 +54,12 @@ fam.rgb2hsl = function (r, g, b)
     local s, l = h, h
     local d = max - min
     s = l > .5 and d / (2 - b) or d / b
-    if max == r then h = (g - b) / d + (g < b and 6 or 0)
-    elseif max == g then h = (b - r) / d + 2
-    elseif max == b then h = (r - g) / d + 4
+    if max == r then
+        h = (g - b) / d + (g < b and 6 or 0)
+    elseif max == g then
+        h = (b - r) / d + 2
+    elseif max == b then
+        h = (r - g) / d + 4
     end
     return h * .16667, s, l
 end
@@ -95,11 +103,11 @@ fam.aabb = function(x1, y1, w1, h1, x2, y2, w2, h2)
         y2 < y1 + h1
 end
 
-fam.point_in_cube = function (cube, point)
+fam.point_in_cube = function(cube, point)
     local px, py, pz = table.unpack(point)
     local x, y, z, w, h, d = table.unpack(cube)
 
-    return  px - x
+    return px - x
         and py - y
         and pz - z
         and x + w - px
@@ -113,25 +121,25 @@ fam.copy_into = function(from, into)
     end
 end
 
-fam.choice = function (array)
+fam.choice = function(array)
     return array[math.random(1, #array)]
 end
 
-local function shortAngleDist(a0,a1)
-    local max = math.pi*2
+local function shortAngleDist(a0, a1)
+    local max = math.pi * 2
     local da = (a1 - a0) % max
-    return 2*da % max - da
+    return 2 * da % max - da
 end
 
-fam.angle_lerp = function (a0,a1,t)
-    return a0 + shortAngleDist(a0,a1)*t
+fam.angle_lerp = function(a0, a1, t)
+    return a0 + shortAngleDist(a0, a1) * t
 end
 
-fam.to_u8 = function (float)
-    return math.floor(fam.clamp(float, 0, 1)*255)
+fam.to_u8 = function(float)
+    return math.floor(fam.clamp(float, 0, 1) * 255)
 end
 
-fam.shuffle = function (t)
+fam.shuffle = function(t)
     local out = {}
     for i = 1, #t do
         out[i] = t[i]
@@ -144,12 +152,12 @@ fam.shuffle = function (t)
     return out
 end
 
-fam.array_compare = function (a, b)
+fam.array_compare = function(a, b)
     if #a ~= #b then
         return false
     end
 
-    for i=1, #a do
+    for i = 1, #a do
         if (a[i] ~= b[i]) then
             return false
         end
@@ -158,39 +166,39 @@ fam.array_compare = function (a, b)
     return true
 end
 
-fam.loop_index = function (array, index)
-    return array[(math.floor(index-1) % #array)+1]
+fam.loop_index = function(array, index)
+    return array[(math.floor(index - 1) % #array) + 1]
 end
 
-fam.enum = function (array)
+fam.enum = function(array)
     for _, v in ipairs(array) do
         array[v] = v
     end
 end
 
-fam.switch = function (value)
-    return function (map)
+fam.switch = function(value)
+    return function(map)
         local a = map[value] or map.default
-        if type(a)=="function" then
+        if type(a) == "function" then
             return a(value)
         end
         return a
     end
 end
 
-fam.inv_square = function (value)
-    return 1-(fam.clamp(1-value, 0, 1)^2)
+fam.inv_square = function(value)
+    return 1 - (fam.clamp(1 - value, 0, 1) ^ 2)
 end
 
-fam.triangle_to_normal = function (p1, p2, p3)
+fam.triangle_to_normal = function(p1, p2, p3)
     local a_x = p2[1] - p1[1]
     local a_y = p2[2] - p1[2]
     local a_z = p2[3] - p1[3]
-    
+
     local b_x = p3[1] - p1[1]
     local b_y = p3[2] - p1[2]
     local b_z = p3[3] - p1[3]
-    
+
     return {
         a_y * b_z - a_z * b_y,
         a_z * b_x - a_x * b_z,
@@ -198,9 +206,9 @@ fam.triangle_to_normal = function (p1, p2, p3)
     }
 end
 
-fam.normal_to_euler = function (a)
+fam.normal_to_euler = function(a)
     local x, y, z = a[1], a[2], a[3]
-    
+
     -- Calculate yaw (rotation around the y-axis)
     local yaw = math.atan(x, z)
 

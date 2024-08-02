@@ -7,7 +7,9 @@ camera.points = {}
 camera.current = {
     eye = { 0, 0, 0 },
     target = { 0, 0, 0 },
-    listener = { 0, 0, 0 }
+    listener = { 0, 0, 0 },
+
+    new = true
 }
 
 ---@param target table
@@ -93,8 +95,8 @@ camera.frame = function(delta)
         )
     end
 
-    camera.current.eye = vec3.lerp(camera.current.eye, c.eye, delta * c.speed)
-    camera.current.target = vec3.lerp(camera.current.target, c.target, delta * c.speed)
+    camera.current.eye = vec3.decay(camera.current.eye, c.eye, c.speed / 10, delta)
+    camera.current.target = vec3.decay(camera.current.target, c.target, c.speed / 10, delta)
 
     local listener
     for x = #camera.points, 1, -1 do
@@ -106,7 +108,7 @@ camera.frame = function(delta)
     end
 
     if listener then
-        camera.current.listener = vec3.lerp(camera.current.listener, listener, delta * c.speed)
+        camera.current.listener = vec3.decay(camera.current.listener, listener, c.speed / 10, delta)
     end
 
     eng.camera(camera.current.eye, camera.current.target, { 0, 0, 1 })

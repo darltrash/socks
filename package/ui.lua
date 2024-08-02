@@ -1,151 +1,152 @@
-local vec3   = require "lib.vec3"
-local mat4   = require "lib.mat4"
-local fam    = require "lib.fam"
-local ui =  {}
+local assets = require "assets"
+local vec3 = require "lib.vec3"
+local mat4 = require "lib.mat4"
+local fam = require "lib.fam"
+local ui = {}
 
-local plane = eng.load_model "assets/mod_plane.exm"
+local plane = assets.mod_plane
 
 -- Monogram by datagoblin! (datagoblin.itch.io/monogram)
 ui.font = {
-    ['Á']  = { 7,   192, 7, 12, ox = 1,  oy = 11 }, 
-    ['j']  = { 42,  192, 7, 11, ox = 1,  oy = 8  },
-    ['Ï']  = { 63,  192, 7, 11, ox = 1,  oy = 10 },
-    ['l']  = { 98,  223, 7, 9,  ox = 1,  oy = 8  },
-    ['Í']  = { 21,  192, 7, 12, ox = 1,  oy = 11 },
-    ['É']  = { 14,  192, 7, 12, ox = 1,  oy = 11 },
-    ['Ó']  = { 28,  192, 7, 12, ox = 1,  oy = 11 },
-    ['Ä']  = { 49,  192, 7, 11, ox = 1,  oy = 10 },
-    ['}']  = { 47,  232, 5, 9,  ox = 0,  oy = 8  },
-    ['r']  = { 35,  241, 7, 7,  ox = 1,  oy = 6  },
-    ['←']  = { 91,  241, 7, 7,  ox = 1,  oy = 6  },
-    ['t']  = { 119, 223, 7, 9,  ox = 1,  oy = 8  },
-    ['ö']  = { 28,  232, 7, 9,  ox = 1,  oy = 8  },
-    ['n']  = { 21,  241, 7, 7,  ox = 1,  oy = 6  },
-    ['{']  = { 42,  232, 5, 9,  ox = 0,  oy = 8  },
-    ['p']  = { 105, 223, 7, 9,  ox = 1,  oy = 6  },
-    ['[']  = { 64,  232, 4, 9,  ox = -1, oy = 8  },
-    ['e']  = { 7,   241, 7, 7,  ox = 1,  oy = 6  },
-    [']']  = { 68,  232, 4, 9,  ox = 0,  oy = 8  },
-    ['Ë']  = { 56,  192, 7, 11, ox = 1,  oy = 10 },
-    ['W']  = { 14,  223, 7, 9,  ox = 1,  oy = 8  },
-    ['→']  = { 84,  241, 7, 7,  ox = 1,  oy = 6  },
-    ['b']  = { 49,  223, 7, 9,  ox = 1,  oy = 8  },
-    [' ']  = { 28,  248, 3, 3,  ox = 1,  oy = 1  },
-    ['!']  = { 72,  232, 3, 9,  ox = -1, oy = 8  },
-    ['"']  = { 112, 241, 5, 5,  ox = 0,  oy = 8  },
-    ['#']  = { 78,  232, 7, 8,  ox = 1,  oy = 7  },
-    ['$']  = { 7,   204, 7, 9,  ox = 1,  oy = 8  },
-    ['%']  = { 14,  204, 7, 9,  ox = 1,  oy = 8  },
-    ['&']  = { 21,  204, 7, 9,  ox = 1,  oy = 8  },
-    ['\''] = { 121, 241, 3, 5,  ox = -1, oy = 8  },
-    ['(']  = { 52,  232, 4, 9,  ox = -1, oy = 8  },
-    [')']  = { 56,  232, 4, 9,  ox = 0,  oy = 8  },
-    ['*']  = { 88,  232, 7, 7,  ox = 1,  oy = 7  },
-    ['+']  = { 95,  232, 7, 7,  ox = 1,  oy = 7  },
-    [',']  = { 117, 241, 4, 5,  ox = 0,  oy = 3  },
-    ['-']  = { 14,  248, 7, 3,  ox = 1,  oy = 5  },
-    ['.']  = { 11,  248, 3, 4,  ox = -1, oy = 3  },
-    ['/']  = { 28,  204, 7, 9,  ox = 1,  oy = 8  },
-    ['0']  = { 35,  204, 7, 9,  ox = 1,  oy = 8  },
-    ['1']  = { 42,  204, 7, 9,  ox = 1,  oy = 8  },
-    ['2']  = { 49,  204, 7, 9,  ox = 1,  oy = 8  },
-    ['3']  = { 56,  204, 7, 9,  ox = 1,  oy = 8  },
-    ['4']  = { 63,  204, 7, 9,  ox = 1,  oy = 8  },
-    ['5']  = { 70,  204, 7, 9,  ox = 1,  oy = 8  },
-    ['6']  = { 77,  204, 7, 9,  ox = 1,  oy = 8  },
-    ['7']  = { 84,  204, 7, 9,  ox = 1,  oy = 8  },
-    ['8']  = { 91,  204, 7, 9,  ox = 1,  oy = 8  },
-    ['9']  = { 98,  204, 7, 9,  ox = 1,  oy = 8  },
-    [':']  = { 85,  232, 3, 8,  ox = -1, oy = 7  },
-    [';']  = { 60,  232, 4, 9,  ox = 0,  oy = 7  },
-    ['<']  = { 102, 232, 7, 7,  ox = 1,  oy = 7  },
-    ['=']  = { 98,  241, 7, 5,  ox = 1,  oy = 6  },
-    ['>']  = { 109, 232, 7, 7,  ox = 1,  oy = 7  },
-    ['?']  = { 105, 204, 7, 9,  ox = 1,  oy = 8  },
-    ['@']  = { 112, 204, 7, 9,  ox = 1,  oy = 8  },
-    ['A']  = { 119, 204, 7, 9,  ox = 1,  oy = 8  },
-    ['B']  = { 0,   214, 7, 9,  ox = 1,  oy = 8  },
-    ['C']  = { 7,   214, 7, 9,  ox = 1,  oy = 8  },
-    ['D']  = { 14,  214, 7, 9,  ox = 1,  oy = 8  },
-    ['E']  = { 21,  214, 7, 9,  ox = 1,  oy = 8  },
-    ['F']  = { 28,  214, 7, 9,  ox = 1,  oy = 8  },
-    ['G']  = { 35,  214, 7, 9,  ox = 1,  oy = 8  },
-    ['H']  = { 42,  214, 7, 9,  ox = 1,  oy = 8  },
-    ['I']  = { 49,  214, 7, 9,  ox = 1,  oy = 8  },
-    ['J']  = { 56,  214, 7, 9,  ox = 1,  oy = 8  },
-    ['K']  = { 63,  214, 7, 9,  ox = 1,  oy = 8  },
-    ['L']  = { 70,  214, 7, 9,  ox = 1,  oy = 8  },
-    ['M']  = { 77,  214, 7, 9,  ox = 1,  oy = 8  },
-    ['N']  = { 84,  214, 7, 9,  ox = 1,  oy = 8  },
-    ['O']  = { 91,  214, 7, 9,  ox = 1,  oy = 8  },
-    ['P']  = { 98,  214, 7, 9,  ox = 1,  oy = 8  },
-    ['Q']  = { 84,  192, 7, 10, ox = 1,  oy = 8  },
-    ['R']  = { 105, 214, 7, 9,  ox = 1,  oy = 8  },
-    ['S']  = { 112, 214, 7, 9,  ox = 1,  oy = 8  },
-    ['T']  = { 119, 214, 7, 9,  ox = 1,  oy = 8  },
-    ['U']  = { 0,   223, 7, 9,  ox = 1,  oy = 8  },
-    ['V']  = { 7,   223, 7, 9,  ox = 1,  oy = 8  },
-    ['Ö']  = { 70,  192, 7, 11, ox = 1,  oy = 10 },
-    ['X']  = { 21,  223, 7, 9,  ox = 1,  oy = 8  },
-    ['Y']  = { 28,  223, 7, 9,  ox = 1,  oy = 8  },
-    ['Z']  = { 35,  223, 7, 9,  ox = 1,  oy = 8  },
-    ['Ú']  = { 35,  192, 7, 12, ox = 1,  oy = 11 },
-    ['\\'] = { 42,  223, 7, 9,  ox = 1,  oy = 8  },
-    ['Ü']  = { 77,  192, 7, 11, ox = 1,  oy = 10 },
-    ['^']  = { 105, 241, 7, 5,  ox = 1,  oy = 8  },
-    ['_']  = { 21,  248, 7, 3,  ox = 1,  oy = 2  },
-    ['`']  = { 7,   248, 4, 4,  ox = 0,  oy = 8  },
-    ['a']  = { 116, 232, 7, 7,  ox = 1,  oy = 6  },
-    ['á']  = { 98,  192, 7, 10, ox = 1,  oy = 9  },
-    ['c']  = { 0,   241, 7, 7,  ox = 1,  oy = 6  },
-    ['d']  = { 56,  223, 7, 9,  ox = 1,  oy = 8  },
-    ['ä']  = { 7,   232, 7, 9,  ox = 1,  oy = 8  },
-    ['f']  = { 63,  223, 7, 9,  ox = 1,  oy = 8  },
-    ['g']  = { 70,  223, 7, 9,  ox = 1,  oy = 6  },
-    ['h']  = { 77,  223, 7, 9,  ox = 1,  oy = 8  },
-    ['i']  = { 84,  223, 7, 9,  ox = 1,  oy = 8  },
-    ['é']  = { 105, 192, 7, 10, ox = 1,  oy = 9  },
-    ['k']  = { 91,  223, 7, 9,  ox = 1,  oy = 8  },
-    ['ë']  = { 14,  232, 7, 9,  ox = 1,  oy = 8  },
-    ['m']  = { 14,  241, 7, 7,  ox = 1,  oy = 6  },
-    ['í']  = { 112, 192, 7, 10, ox = 1,  oy = 9  },
-    ['o']  = { 28,  241, 7, 7,  ox = 1,  oy = 6  },
-    ['ï']  = { 21,  232, 7, 9,  ox = 1,  oy = 8  },
-    ['q']  = { 112, 223, 7, 9,  ox = 1,  oy = 6  },
-    ['ñ']  = { 91,  192, 7, 10, ox = 1,  oy = 9  },
-    ['s']  = { 42,  241, 7, 7,  ox = 1,  oy = 6  },
-    ['ó']  = { 119, 192, 7, 10, ox = 1,  oy = 9  },
-    ['u']  = { 49,  241, 7, 7,  ox = 1,  oy = 6  },
-    ['v']  = { 56,  241, 7, 7,  ox = 1,  oy = 6  },
-    ['w']  = { 63,  241, 7, 7,  ox = 1,  oy = 6  },
-    ['x']  = { 70,  241, 7, 7,  ox = 1,  oy = 6  },
-    ['y']  = { 0,   232, 7, 9,  ox = 1,  oy = 6  },
-    ['z']  = { 77,  241, 7, 7,  ox = 1,  oy = 6  },
-    ['ú']  = { 0,   204, 7, 10, ox = 1,  oy = 9  },
-    ['|']  = { 75,  232, 3, 9,  ox = -1, oy = 8  },
-    ['ü']  = { 35,  232, 7, 9,  ox = 1,  oy = 8  },
-    ['~']  = { 0,   248, 7, 4,  ox = 1,  oy = 6  },
-    ['Ñ']  = { 0,   192, 7, 12, ox = 1,  oy = 11 }
+    ['Á'] = { 7, 192, 7, 12, ox = 1, oy = 11 },
+    ['j'] = { 42, 192, 7, 11, ox = 1, oy = 8 },
+    ['Ï'] = { 63, 192, 7, 11, ox = 1, oy = 10 },
+    ['l'] = { 98, 223, 7, 9, ox = 1, oy = 8 },
+    ['Í'] = { 21, 192, 7, 12, ox = 1, oy = 11 },
+    ['É'] = { 14, 192, 7, 12, ox = 1, oy = 11 },
+    ['Ó'] = { 28, 192, 7, 12, ox = 1, oy = 11 },
+    ['Ä'] = { 49, 192, 7, 11, ox = 1, oy = 10 },
+    ['}'] = { 47, 232, 5, 9, ox = 0, oy = 8 },
+    ['r'] = { 35, 241, 7, 7, ox = 1, oy = 6 },
+    ['←'] = { 91, 241, 7, 7, ox = 1, oy = 6 },
+    ['t'] = { 119, 223, 7, 9, ox = 1, oy = 8 },
+    ['ö'] = { 28, 232, 7, 9, ox = 1, oy = 8 },
+    ['n'] = { 21, 241, 7, 7, ox = 1, oy = 6 },
+    ['{'] = { 42, 232, 5, 9, ox = 0, oy = 8 },
+    ['p'] = { 105, 223, 7, 9, ox = 1, oy = 6 },
+    ['['] = { 64, 232, 4, 9, ox = -1, oy = 8 },
+    ['e'] = { 7, 241, 7, 7, ox = 1, oy = 6 },
+    [']'] = { 68, 232, 4, 9, ox = 0, oy = 8 },
+    ['Ë'] = { 56, 192, 7, 11, ox = 1, oy = 10 },
+    ['W'] = { 14, 223, 7, 9, ox = 1, oy = 8 },
+    ['→'] = { 84, 241, 7, 7, ox = 1, oy = 6 },
+    ['b'] = { 49, 223, 7, 9, ox = 1, oy = 8 },
+    [' '] = { 28, 248, 3, 3, ox = 1, oy = 1 },
+    ['!'] = { 72, 232, 3, 9, ox = -1, oy = 8 },
+    ['"'] = { 112, 241, 5, 5, ox = 0, oy = 8 },
+    ['#'] = { 78, 232, 7, 8, ox = 1, oy = 7 },
+    ['$'] = { 7, 204, 7, 9, ox = 1, oy = 8 },
+    ['%'] = { 14, 204, 7, 9, ox = 1, oy = 8 },
+    ['&'] = { 21, 204, 7, 9, ox = 1, oy = 8 },
+    ['\''] = { 121, 241, 3, 5, ox = -1, oy = 8 },
+    ['('] = { 52, 232, 4, 9, ox = -1, oy = 8 },
+    [')'] = { 56, 232, 4, 9, ox = 0, oy = 8 },
+    ['*'] = { 88, 232, 7, 7, ox = 1, oy = 7 },
+    ['+'] = { 95, 232, 7, 7, ox = 1, oy = 7 },
+    [','] = { 117, 241, 4, 5, ox = 0, oy = 3 },
+    ['-'] = { 14, 248, 7, 3, ox = 1, oy = 5 },
+    ['.'] = { 11, 248, 3, 4, ox = -1, oy = 3 },
+    ['/'] = { 28, 204, 7, 9, ox = 1, oy = 8 },
+    ['0'] = { 35, 204, 7, 9, ox = 1, oy = 8 },
+    ['1'] = { 42, 204, 7, 9, ox = 1, oy = 8 },
+    ['2'] = { 49, 204, 7, 9, ox = 1, oy = 8 },
+    ['3'] = { 56, 204, 7, 9, ox = 1, oy = 8 },
+    ['4'] = { 63, 204, 7, 9, ox = 1, oy = 8 },
+    ['5'] = { 70, 204, 7, 9, ox = 1, oy = 8 },
+    ['6'] = { 77, 204, 7, 9, ox = 1, oy = 8 },
+    ['7'] = { 84, 204, 7, 9, ox = 1, oy = 8 },
+    ['8'] = { 91, 204, 7, 9, ox = 1, oy = 8 },
+    ['9'] = { 98, 204, 7, 9, ox = 1, oy = 8 },
+    [':'] = { 85, 232, 3, 8, ox = -1, oy = 7 },
+    [';'] = { 60, 232, 4, 9, ox = 0, oy = 7 },
+    ['<'] = { 102, 232, 7, 7, ox = 1, oy = 7 },
+    ['='] = { 98, 241, 7, 5, ox = 1, oy = 6 },
+    ['>'] = { 109, 232, 7, 7, ox = 1, oy = 7 },
+    ['?'] = { 105, 204, 7, 9, ox = 1, oy = 8 },
+    ['@'] = { 112, 204, 7, 9, ox = 1, oy = 8 },
+    ['A'] = { 119, 204, 7, 9, ox = 1, oy = 8 },
+    ['B'] = { 0, 214, 7, 9, ox = 1, oy = 8 },
+    ['C'] = { 7, 214, 7, 9, ox = 1, oy = 8 },
+    ['D'] = { 14, 214, 7, 9, ox = 1, oy = 8 },
+    ['E'] = { 21, 214, 7, 9, ox = 1, oy = 8 },
+    ['F'] = { 28, 214, 7, 9, ox = 1, oy = 8 },
+    ['G'] = { 35, 214, 7, 9, ox = 1, oy = 8 },
+    ['H'] = { 42, 214, 7, 9, ox = 1, oy = 8 },
+    ['I'] = { 49, 214, 7, 9, ox = 1, oy = 8 },
+    ['J'] = { 56, 214, 7, 9, ox = 1, oy = 8 },
+    ['K'] = { 63, 214, 7, 9, ox = 1, oy = 8 },
+    ['L'] = { 70, 214, 7, 9, ox = 1, oy = 8 },
+    ['M'] = { 77, 214, 7, 9, ox = 1, oy = 8 },
+    ['N'] = { 84, 214, 7, 9, ox = 1, oy = 8 },
+    ['O'] = { 91, 214, 7, 9, ox = 1, oy = 8 },
+    ['P'] = { 98, 214, 7, 9, ox = 1, oy = 8 },
+    ['Q'] = { 84, 192, 7, 10, ox = 1, oy = 8 },
+    ['R'] = { 105, 214, 7, 9, ox = 1, oy = 8 },
+    ['S'] = { 112, 214, 7, 9, ox = 1, oy = 8 },
+    ['T'] = { 119, 214, 7, 9, ox = 1, oy = 8 },
+    ['U'] = { 0, 223, 7, 9, ox = 1, oy = 8 },
+    ['V'] = { 7, 223, 7, 9, ox = 1, oy = 8 },
+    ['Ö'] = { 70, 192, 7, 11, ox = 1, oy = 10 },
+    ['X'] = { 21, 223, 7, 9, ox = 1, oy = 8 },
+    ['Y'] = { 28, 223, 7, 9, ox = 1, oy = 8 },
+    ['Z'] = { 35, 223, 7, 9, ox = 1, oy = 8 },
+    ['Ú'] = { 35, 192, 7, 12, ox = 1, oy = 11 },
+    ['\\'] = { 42, 223, 7, 9, ox = 1, oy = 8 },
+    ['Ü'] = { 77, 192, 7, 11, ox = 1, oy = 10 },
+    ['^'] = { 105, 241, 7, 5, ox = 1, oy = 8 },
+    ['_'] = { 21, 248, 7, 3, ox = 1, oy = 2 },
+    ['`'] = { 7, 248, 4, 4, ox = 0, oy = 8 },
+    ['a'] = { 116, 232, 7, 7, ox = 1, oy = 6 },
+    ['á'] = { 98, 192, 7, 10, ox = 1, oy = 9 },
+    ['c'] = { 0, 241, 7, 7, ox = 1, oy = 6 },
+    ['d'] = { 56, 223, 7, 9, ox = 1, oy = 8 },
+    ['ä'] = { 7, 232, 7, 9, ox = 1, oy = 8 },
+    ['f'] = { 63, 223, 7, 9, ox = 1, oy = 8 },
+    ['g'] = { 70, 223, 7, 9, ox = 1, oy = 6 },
+    ['h'] = { 77, 223, 7, 9, ox = 1, oy = 8 },
+    ['i'] = { 84, 223, 7, 9, ox = 1, oy = 8 },
+    ['é'] = { 105, 192, 7, 10, ox = 1, oy = 9 },
+    ['k'] = { 91, 223, 7, 9, ox = 1, oy = 8 },
+    ['ë'] = { 14, 232, 7, 9, ox = 1, oy = 8 },
+    ['m'] = { 14, 241, 7, 7, ox = 1, oy = 6 },
+    ['í'] = { 112, 192, 7, 10, ox = 1, oy = 9 },
+    ['o'] = { 28, 241, 7, 7, ox = 1, oy = 6 },
+    ['ï'] = { 21, 232, 7, 9, ox = 1, oy = 8 },
+    ['q'] = { 112, 223, 7, 9, ox = 1, oy = 6 },
+    ['ñ'] = { 91, 192, 7, 10, ox = 1, oy = 9 },
+    ['s'] = { 42, 241, 7, 7, ox = 1, oy = 6 },
+    ['ó'] = { 119, 192, 7, 10, ox = 1, oy = 9 },
+    ['u'] = { 49, 241, 7, 7, ox = 1, oy = 6 },
+    ['v'] = { 56, 241, 7, 7, ox = 1, oy = 6 },
+    ['w'] = { 63, 241, 7, 7, ox = 1, oy = 6 },
+    ['x'] = { 70, 241, 7, 7, ox = 1, oy = 6 },
+    ['y'] = { 0, 232, 7, 9, ox = 1, oy = 6 },
+    ['z'] = { 77, 241, 7, 7, ox = 1, oy = 6 },
+    ['ú'] = { 0, 204, 7, 10, ox = 1, oy = 9 },
+    ['|'] = { 75, 232, 3, 9, ox = -1, oy = 8 },
+    ['ü'] = { 35, 232, 7, 9, ox = 1, oy = 8 },
+    ['~'] = { 0, 248, 7, 4, ox = 1, oy = 6 },
+    ['Ñ'] = { 0, 192, 7, 12, ox = 1, oy = 11 }
 }
 
 ui.font.fallback = ui.font["?"]
 
-ui.rounded_rect = function (x, y, w, h, color)
-    eng.rect(x+1, y, w-2, h, color)
-    eng.rect(x, y+1, w, h-2, color)
+ui.rounded_rect = function(x, y, w, h, color)
+    eng.rect(x + 1, y, w - 2, h, color)
+    eng.rect(x, y + 1, w, h - 2, color)
 end
 
-ui.box = function (x, y, w, h, bg, fg)
+ui.box = function(x, y, w, h, bg, fg)
     ui.rounded_rect(x, y, w, h, bg)
-    eng.rect(x+4, y+4, w-8, h-8, fg)
-    eng.rect(x+5, y+5, w-10, h-10, bg)
+    eng.rect(x + 4, y + 4, w - 8, h - 8, fg)
+    eng.rect(x + 5, y + 5, w - 10, h - 10, bg)
 end
 
 local NEWLINE_SPACE = 18
 local LINE_SPACE = 12
 
 
-ui.text_size = function (text)
+ui.text_size = function(text)
     local px, py = 0, 0
     local sx, sy = 0, 6
     local whitespace_limit = 0
@@ -176,7 +177,7 @@ end
 
 local function print_naive(text, x, y, color)
     local nx, ny = x, y
-    
+
     for c in text:gmatch(utf8.charpattern) do
         if c == "\n" then
             nx = x
@@ -185,8 +186,8 @@ local function print_naive(text, x, y, color)
         end
 
         local t = ui.font[c] or ui.font.fallback
-    
-        eng.quad(t, nx-t.ox, ny-t.oy+7, color)
+
+        eng.quad(t, nx - t.ox, ny - t.oy + 7, color)
 
         nx = nx + 6
 
@@ -196,7 +197,7 @@ local function print_naive(text, x, y, color)
     return nx
 end
 
-ui.print = function (text, x, y, color, wrap)
+ui.print = function(text, x, y, color, wrap)
     if not wrap then
         return print_naive(text, x, y, color)
     end
@@ -207,7 +208,7 @@ ui.print = function (text, x, y, color, wrap)
         for word in line:gmatch("(%S+%s*)") do
             local w, _, ww = ui.text_size(word)
 
-            if (nx+ww) > (x+wrap) then
+            if (nx + ww) > (x + wrap) then
                 nx = x
                 ny = ny + LINE_SPACE
             end
@@ -236,16 +237,16 @@ local function print_naive_3d(text, vec, color)
         end
 
         local t = ui.font[c] or ui.font.fallback
-    
+
         local r = vec3.mul_val({
             v[1] + 0,
             v[2] + (p[2] - (t[3] - t.ox)),
             v[3] + (p[3] - (t[4] - t.oy))
-        }, 1/16)
+        }, 1 / 16)
 
         eng.render {
             mesh = plane,
-            model = mat4.from_transform(r, 0, {1, t[3]/16, t[4]/16}),
+            model = mat4.from_transform(r, 0, { 1, t[3] / 16, t[4] / 16 }),
             texture = t,
             tint = color
         }
@@ -254,17 +255,16 @@ local function print_naive_3d(text, vec, color)
 
         ::continue::
     end
-
 end
 
-ui.print_3d = function (text, vec, color, wrap)
+ui.print_3d = function(text, vec, color, wrap)
     --eng.render {
     --    mesh = assets.cube,
     --    model = mat4.from_transform(vec, 0, 0.1),
     --    texture = { 0, 0, 1, 1 }
     --}
 
-    local v = vec3.mul_val(vec, 1*16)
+    local v = vec3.mul_val(vec, 1 * 16)
     local p = { 0, 0, 0 }
 
     if not wrap then
@@ -275,7 +275,7 @@ ui.print_3d = function (text, vec, color, wrap)
         for word in line:gmatch("(%S+%s*)") do
             local w, _, ww = ui.text_size(word)
 
-            if (p[2]+ww) > wrap then
+            if (p[2] + ww) > wrap then
                 p[2] = 12
                 p[3] = p[3] - 12
             end
@@ -289,14 +289,14 @@ ui.print_3d = function (text, vec, color, wrap)
     end
 end
 
-ui.print_center = function (text, x, y, w, h, color)
+ui.print_center = function(text, x, y, w, h, color)
     local tw, th = ui.text_size(text)
 
-    print_naive(text, x+((w-tw)//2), y+((h-th)//2), color)
+    print_naive(text, x + ((w - tw) // 2), y + ((h - th) // 2), color)
 end
 
 
-ui.squircle = function (x, y, w, h, color, radius, segments)
+ui.squircle = function(x, y, w, h, color, radius, segments)
     local mesh = {
         data = "",
         length = 0
@@ -308,7 +308,7 @@ ui.squircle = function (x, y, w, h, color, radius, segments)
 
         mesh.length = mesh.length + 1
         mesh.data = mesh.data ..
-            string.pack("<fffffBBBB", px+ox, py+oy, 0, 0, 0, 255, 255, 255, 255)
+            string.pack("<fffffBBBB", px + ox, py + oy, 0, 0, 0, 255, 255, 255, 255)
     end
 
     radius = 1 / fam.clamp(radius or 0.1, 0, 1)
@@ -324,9 +324,9 @@ ui.squircle = function (x, y, w, h, color, radius, segments)
 
         local cosAngle = math.cos(angle)
         local sinAngle = math.sin(angle)
-        
-        local factorX = (cosAngle > 0 and 1 or -1) * (math.abs(cosAngle) ^ (1/radius))
-        local factorY = (sinAngle > 0 and 1 or -1) * (math.abs(sinAngle) ^ (1/radius))
+
+        local factorX = (cosAngle > 0 and 1 or -1) * (math.abs(cosAngle) ^ (1 / radius))
+        local factorY = (sinAngle > 0 and 1 or -1) * (math.abs(sinAngle) ^ (1 / radius))
 
         table.insert(points, {
             cx + factorX * w / 2,
@@ -349,28 +349,28 @@ ui.squircle = function (x, y, w, h, color, radius, segments)
     }
 end
 
-ui.funky_rect = function (x, y, w, h, color)
+ui.funky_rect = function(x, y, w, h, color)
     local mesh = {
         data = "",
         length = 0
     }
 
     local function push(px, py)
-        local ox = eng.perlin(px/300, py/300, eng.timer/4) * 3
-        local oy = eng.perlin(px/300, py/300, eng.timer/2) * 3
+        local ox = eng.perlin(px / 300, py / 300, eng.timer / 4) * 3
+        local oy = eng.perlin(px / 300, py / 300, eng.timer / 2) * 3
 
         mesh.length = mesh.length + 1
         mesh.data = mesh.data ..
-            string.pack("<fffffBBBB", px+ox, py+oy, 0, 0, 0, 255, 255, 255, 255)
+            string.pack("<fffffBBBB", px + ox, py + oy, 0, 0, 0, 255, 255, 255, 255)
     end
 
-    push(x,   y)
-    push(x+w, y)
-    push(x, y+h)
+    push(x, y)
+    push(x + w, y)
+    push(x, y + h)
 
-    push(x+w, y)
-    push(x, y+h)
-    push(x+w, y+h)
+    push(x + w, y)
+    push(x, y + h)
+    push(x + w, y + h)
 
     eng.draw {
         mesh = mesh,
@@ -378,19 +378,19 @@ ui.funky_rect = function (x, y, w, h, color)
     }
 end
 
-ui.funky_trongle = function (x1, y1, x2, y2, x3, y3, color)
+ui.funky_trongle = function(x1, y1, x2, y2, x3, y3, color)
     local mesh = {
         data = "",
         length = 0
     }
 
     local function push(px, py)
-        local ox = eng.perlin(px/300, py/300, eng.timer/4) * 3
-        local oy = eng.perlin(px/300, py/300, eng.timer/2) * 3
+        local ox = eng.perlin(px / 300, py / 300, eng.timer / 4) * 3
+        local oy = eng.perlin(px / 300, py / 300, eng.timer / 2) * 3
 
         mesh.length = mesh.length + 1
         mesh.data = mesh.data ..
-            string.pack("<fffffBBBB", px+ox, py+oy, 0, 0, 0, 255, 255, 255, 255)
+            string.pack("<fffffBBBB", px + ox, py + oy, 0, 0, 0, 255, 255, 255, 255)
     end
 
     push(x1, y1)

@@ -1,12 +1,11 @@
 *.o
 *.upx
-src/static.h
-thing
-thing.exe
-thing.js
-thing.wasm
+socks
+socks*
 out/
 raw/*.blend*
 !raw/*.blend
 raw/*.exm
 package.bsk
+.cache
+gmon.out

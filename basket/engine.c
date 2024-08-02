@@ -64,7 +64,7 @@ void event(SDL_Event event, SDL_Window *window) {
                     focused = true;
                     break;
                 }
-                
+
                 default: break;
             }
         }
@@ -130,7 +130,13 @@ const char *eng_error_string(int error) {
 int eng_main(Application app, const char *arg0) {
     printf("hello world, i'm basket.\n");
 
-    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
+    SDL_Init( 0
+        | SDL_INIT_VIDEO
+        | SDL_INIT_EVENTS
+        | SDL_INIT_AUDIO
+        | SDL_INIT_JOYSTICK
+        | SDL_INIT_GAMECONTROLLER
+    );
 
   	SDL_Window *window = SDL_CreateWindow(
         "socks",
@@ -169,7 +175,7 @@ int eng_main(Application app, const char *arg0) {
     inp_register_scancode("s", INP_DOWN  ),
     inp_register_scancode("a", INP_LEFT  ),
     inp_register_scancode("d", INP_RIGHT ),
-    
+
     inp_register_scancode("j", INP_JUMP   ),
     inp_register_scancode("k", INP_ATTACK ),
     inp_register_scancode("l", INP_MENU   ),
@@ -182,6 +188,12 @@ int eng_main(Application app, const char *arg0) {
     inp_register_scancode("z", INP_JUMP   ),
     inp_register_scancode("x", INP_ATTACK ),
     inp_register_scancode("c", INP_MENU   ),
+
+    inp_register_controller_button("dpad_left", INP_LEFT);
+
+    inp_register_controller_button("a", INP_JUMP);
+    inp_register_controller_button("b", INP_ATTACK);
+    inp_register_controller_button("c", INP_MENU);
 
     // sigh...
     inp_register_scancode("space", INP_JUMP);
@@ -257,9 +269,9 @@ int eng_main(Application app, const char *arg0) {
         }
 
         ENG_CALL_IF_VALID(app.frame, lag / timestep, delta)
-        
+
         if (!focused) {
-            u16 w, h; 
+            u16 w, h;
             ren_size(&w, &h);
 
             ren_rect(-(i32)(w/2), -(i32)(w/2), h*2, h*2, (Color){ .full = 0x00000055 });

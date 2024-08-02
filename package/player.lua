@@ -35,25 +35,16 @@ local collider = {
 local handle_wasd = function(flip_x)
     local vel = { 0, 0, 0 }
 
-    if eng.input("up") then
-        vel[1] = -1
+    local x, y, moving = eng.direction()
+
+    vel[1] = y
+    vel[2] = x
+
+    if (math.abs(x) > 0.3) then
+        flip_x = fam.sign(x)
     end
 
-    if eng.input("down") then
-        vel[1] = vel[1] + 1
-    end
-
-    if eng.input("left") then
-        vel[2] = -1
-        flip_x = -1
-    end
-
-    if eng.input("right") then
-        vel[2] = vel[2] + 1
-        flip_x = 1
-    end
-
-    return vec3.normalize(vel), flip_x
+    return vel, flip_x
 end
 
 local function handle_jump(ent, world)
@@ -66,7 +57,7 @@ local function handle_jump(ent, world)
     if eng.input("jump") == 1 then
         ent.double_jumped = not ent.on_floor
 
-        eng.sound_play(assets.jump, { gain = 0.6 })
+        eng.sound_play(assets.snd_jump, { gain = 0.6 })
 
         ent.scale[3] = 0.7
         ent.texture = player_animation.jumping
@@ -122,7 +113,7 @@ local switch = {
 
         local e = math.floor(ent.animation_timer)
         if e % 2 == 0 and e ~= ent._anim_timer then
-            eng.sound_play(assets.floor_hit)
+            eng.sound_play(assets.snd_floor_hit)
             ent._anim_timer = e
         end
 
@@ -156,7 +147,7 @@ local switch = {
         if ent.on_floor then
             ent.state = "on_floor"
             ent.scale[3] = 1
-            eng.sound_play(assets.floor_hit)
+            eng.sound_play(assets.snd_floor_hit)
             return true
         end
 
@@ -169,11 +160,10 @@ local switch = {
         })
 
         -- OUT OF BOUNDS
-        if ent.position[3] < -3 then
+        if ent.position[3] < -10 then
             ent.delete = true
 
-
-            eng.sound_play(assets.pop)
+            eng.sound_play(assets.snd_pop)
             world:add_entity {
                 type = "explosion",
                 position = ent.position,
@@ -243,7 +233,7 @@ local switch = {
 return {
     init = function(ent, world)
         ent.texture = player_animation[1]
-        ent.camera_focus = camera.focus(ent.position, 5, 20, true)
+        ent.camera_focus = camera.focus(ent.position, 5, 30, true)
         ent.animation_timer = 1
 
         ent.collider = collider
@@ -258,6 +248,8 @@ return {
         ent.tint = { 255, 255, 255, 255 }
 
         ent.listener = true
+
+        camera.force_focus(ent.position, 5, true)
 
         --ent.position = vec3.add(ent.position, {1, 1, 4})
     end,

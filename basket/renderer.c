@@ -74,8 +74,8 @@ static MeshSlice quad = {
 SDL_Window *window;
 
 static void tfx_debug_thingy(const char *str, tfx_severity severity) {
-    if (!eng_is_debug())
-        return;
+    // if (!eng_is_debug())
+    //     return;
 
     printf("tfx ");
 
@@ -167,19 +167,29 @@ void ren_tex_bind(u8 main, u8 lumos) {
         texture_lumos = textures[lumos-1];
 }
 
-static tfx_program shader(const char *data, const char *attribs[]) {
+static tfx_program shader(const char *raw, u32 size, const char *attribs[]) {
     // lazy
-    u32 final_length = strlen(data) + strlen(library_glsl) + 32;
+    u32 final_length = size + basket_shaders__library_glsl_len + 48;
     char *final_source = malloc(final_length);
 
-    if (compat_mode)
-        snprintf(final_source, final_length, "#define COMPAT_MODE 1\n%s\n%s\n", library_glsl, data);
-    else
-        snprintf(final_source, final_length, "%s\n%s\n", library_glsl, data);
+    u32 len = 0;
+    #define PUSH_STR(str, l) { memcpy(&final_source[len], str, l); len += l; }
 
-    tfx_program program = tfx_program_new (
-        final_source,
-        final_source,
+    if (compat_mode)
+        PUSH_STR("#define COMPAT_MODE 1\n", 22)
+
+    PUSH_STR(basket_shaders__library_glsl, basket_shaders__library_glsl_len);
+
+    PUSH_STR("\n\n#line 0\n", 10);
+
+    PUSH_STR(raw, size);
+
+    final_source[len] = 0;
+
+    tfx_program program = tfx_program_len_new(
+        final_source, len,
+        final_source, len,
+
         attribs, -1
     );
 
@@ -257,9 +267,9 @@ int ren_init(SDL_Window *_window) {
         NULL
     };
 
-    program      = shader(shader_glsl, attribs);
-    out_program  = shader(output_glsl, attribs);
-    quad_program = shader(quad_glsl,   attribs);
+    program      = shader((char *)basket_shaders__shader_glsl, basket_shaders__shader_glsl_len, attribs);
+    out_program  = shader((char *)basket_shaders__output_glsl, basket_shaders__output_glsl_len, attribs);
+    quad_program = shader((char *)basket_shaders__quad_glsl,   basket_shaders__quad_glsl_len,   attribs);
 
 	vertex_format = tfx_vertex_format_start();
 	tfx_vertex_format_add(&vertex_format, 0, 3, false, TFX_TYPE_FLOAT); // Position
@@ -553,9 +563,9 @@ int ren_frame() {
     tfx_set_uniform(&far_uniform, &far, 1);
     tfx_set_uniform_int(&snap_uniform, &snapping, 1);
 
-    // HANDLE LIGHTING
     static f32 m[16];
 
+    // HANDLE LIGHTING
     int real_index = 0;
     static f32 light_positions[LIGHT_AMOUNT*3];
     static f32 light_colors[LIGHT_AMOUNT*3];
@@ -563,17 +573,17 @@ int ren_frame() {
     for (int i = 0; i < lights.length; i++) {
         Light light = lights.data[i];
 
-        f32 area = vec_len(light.color, 3);
-
         f32 *color = &light_colors[real_index * 3];
         f32 *position = &light_positions[real_index * 3];
 
         mat4_mulvec(position, light.position, view_matrix);
 
-        if (frustum_vs_sphere(frustum, position, area * 9)) {
-            memcpy(color, light.color, sizeof(light.color));
+        f64 intensity = vec_len(light.color, 3);
+        f64 radius = sqrtf(intensity / 0.001f) - 0.8f;
 
-            if (real_index++ > LIGHT_AMOUNT)
+        if (frustum_vs_sphere(frustum, position, sqrt(fmax(radius, 0.0f))) ) {
+            memcpy(color, light.color, sizeof(light.color));
+            if (++real_index > LIGHT_AMOUNT)
                 break;
         }
     }
@@ -605,6 +615,7 @@ int ren_frame() {
 
         CALLCHECK()
 
+        // model * view
         mat4_mul(m, call.model, view_matrix);
 
         if (!call.range.length)
@@ -634,9 +645,11 @@ int ren_frame() {
 
                 copy->color = (Color) { fr, fg, fb, fa };
 
+                // projection space
                 mat4_mulvec(copy->position, vertex.position, m);
             }
 
+            // view space
             if (frustum_vs_triangle(frustum, tri.a.position, tri.b.position, tri.c.position))
                 vec_pusharr(&tmp_vertices, tri.arr, 3);
         }

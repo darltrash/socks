@@ -4,6 +4,7 @@
 #define BASKET_INTERNAL
 #include "basket.h"
 #include <stdio.h>
+#include <dirent.h>
 
 #ifdef _WIN32
     #include <windows.h>
@@ -25,7 +26,7 @@ int chdir_to_path(const char *exec_path) {
         return 1;
 
     *last_slash = '\0';
-    
+
     return chdir(path);
 }
 
@@ -41,8 +42,8 @@ int chdir_to_path(const char *exec_path) {
         do {
             if (strcmp(fs_table[a].filename, name) == 0) {
                 if (size != NULL)
-                    *size = fs_table[a].size; 
-                
+                    *size = fs_table[a].size;
+
                 return strdup(fs_table[a].data);
             }
         } while (fs_table[++a].filename);
@@ -59,30 +60,39 @@ int chdir_to_path(const char *exec_path) {
 
     struct zip_t *zip;
 
+    #define FOUND(where, type) {\
+        printf("found assets in '%s' (%s)!\n", where, type);\
+        return 0;\
+    }
+
     int fs_init(const char *self) {
         if (chdir_to_path(self))
             return 1;
 
         // Check if BASKET_PACKAGE is not NULL
         const char *name = getenv("BASKET_PACKAGE");
-        
+
         if (name != NULL) {
+            // If $BASKET_PACKAGE is a valid directory we can CD into
+            if (!chdir(name))
+                FOUND(name, "folder");
+
             // Try loading a zip file at $BASKET_PACKAGE
             zip = zip_open(name, 0, 'r');
-            if (zip) 
-                return 0; // Found our assets in $BASKET_PACKAGE
+            if (zip)
+                FOUND(name, "bsk")
         }
 
         // If ./package/ is a valid directory we can CD into
         if (!chdir("package"))
-            return 0; // Found our assets in ./package/
+            FOUND("package", "folder");
 
         // Try loading a zip file at ./package.bsk
         zip = zip_open("package.bsk", 0, 'r');
-        if (zip) 
-            return 0; // Found our assets in ./package.bsk
+        if (zip)
+            FOUND("package.bsk", "bsk");
 
-        printf("No data package could be found! Are you sure you didn't delete anything?\n");
+        printf("no data package could be found! Are you sure you didn't delete anything?\n");
 
         return 1; // We couldn't find anything :/
     }
@@ -148,7 +158,7 @@ static SDL_RWops *ops = NULL;
 
 int sav_identity(const char *identity) {
     const char *path = SDL_GetPrefPath("BASKET", identity);
-    
+
     char *full_path = malloc(strlen(path) + 4);
     strcpy(full_path, path);
     strcat(full_path, "sv0");
@@ -162,9 +172,9 @@ int sav_identity(const char *identity) {
 }
 
 int sav_store(const char *data, u32 length) {
-    if (!ops) 
+    if (!ops)
         return 1;
-    
+
     ops->seek(ops, 0, RW_SEEK_SET);
     ops->write(ops, data, 1, length);
 
@@ -173,7 +183,7 @@ int sav_store(const char *data, u32 length) {
 
 // You own the memory that comes out of this thing.
 char *sav_retrieve(u32 *length) {
-    if (!ops) 
+    if (!ops)
         return NULL;
 
     u64 size = ops->size(ops);

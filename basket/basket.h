@@ -193,6 +193,7 @@ typedef int8_t  i8;
     void aud_set_pitch(Source audio, f32 pitch);
     void aud_set_area(Source audio, f32 distance);
     void aud_set_gain(Source audio, f32 gain);
+    void aud_stop(Source audio);
     int aud_state(Source audio);
 
     void aud_listener(f32 position[3]);
@@ -365,12 +366,14 @@ void pool_free(VertexPool* node);
     const char *inp_text();
     void inp_clear();
     u32 inp_button(u8 button);
+    bool inp_direction(f32 direction[2]);
 
     void inp_mouse_position(u16 *x, u16 *y);
     bool inp_mouse_down(u8 button);
 
-    bool inp_register_scancode(const char *scancode, u8 button);
-    bool inp_register_keycode(const char *keycode, u8);
+    void inp_register_scancode(const char *scancode, u8 button);
+    void inp_register_keycode(const char *keycode, u8 button);
+    void inp_register_controller_button(const char *controller_button, u8 button);
     const char *inp_get_key(u8 button);
 
     #ifdef BASKET_INTERNAL

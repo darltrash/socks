@@ -451,23 +451,25 @@ bool frustum_vs_aabb(Frustum f, f32 min[3], f32 max[3]) {
 }
 
 bool frustum_vs_sphere(Frustum f, f32 pos[3], f32 radius) {
-	f32 d;
+    for (int i = 0; i < 6; i++) {
+        f32* plane;
+        switch (i) {
+            case 0: plane = f.left;   break;
+            case 1: plane = f.right;  break;
+            case 2: plane = f.top;    break;
+            case 3: plane = f.bottom; break;
+            case 4: plane = f.near;   break;
+            case 5: plane = f.far;    break;
+        }
 
-	#define fvs_check(p)    \
-		d = p[0] * pos[0] + \
-			p[1] * pos[1] + \
-			p[2] * pos[2] + \
-			p[3];           \
-		if (d <= -radius) return false
+        f32 distance = plane[0] * pos[0] + plane[1] * pos[1] + plane[2] * pos[2] + plane[3];
 
-	fvs_check(f.left);
-	fvs_check(f.right);
-	fvs_check(f.bottom);
-	fvs_check(f.top);
-	fvs_check(f.far);
-	fvs_check(f.near);
+        if (distance < -radius) {
+            return false;  // Sphere is outside this plane
+        }
+    }
 
-	return true;
+    return true;  // Sphere is inside or intersecting all planes
 }
 
 bool frustum_vs_triangle(Frustum f, f32 a[3], f32 b[3], f32 c[3]) {

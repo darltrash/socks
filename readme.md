@@ -3,34 +3,40 @@
 ```
 
 ## how to build
-i have personally only tried this in my own linux install so i'm not sure it will even work on anything else, i am deeply sorry
+in theory this should also work on Windows using Msys2, obviously also in WSL,
+but i haven't tested it, at all.
+
+it should only require the sdl2 headers to work (alongside the libc ofc), everything else is already bundled in the project.
+
+this uses pkg-config for the libraries that the program needs, you can skip
+that by setting the DEPEND variable to cc arguments, or even set PKG-CONFIG.
+(honestly go read the makefile, it could also allow you to try compiling this
+to other platforms, which would be NEATO.)
 
 ```sh
-# for compiling in Linux, you can use other compilers but i havent tried myself, you'll have to set the CC environment variable to your compiler of choice. 
+# debug builds
+make build      # native, usually linux
+make mingw32-64 # windows (requires mingw32)
 
-# the default compiler is "gcc" and it'll try to use ccache if installed and env var NO_CCACHE is not defined
+# release builds
+make MODE=RELEASE build
+make MODE=RELEASE mingw32-64
+make release                 # both!
 
-# fedora
-sudo dnf install -y SDL2-devel ccache gcc luajit unzip zip upx mingw64-gcc mingw64-SDL2
+# true release builds, this setups a debian 10 distrobox container
+# that will link the game against an older glibc, useful for compat.
+./release.sh
 
-# debian/ubuntu
-sudo apt install -y libsdl2-dev ccache gcc luajit zip upx mingw-w64 git
-./setup_mingw.sh
+# generates a slower build of the game, but at a faster rate. useful for
+# quick testing.
+make quick-run
 
-# releases for both linux and windows
-./build.lua release    # you can also use release_linux and release_windows
+# builds the game to the native platform, then runs it.
+# (compatible with MODE=RELEASE, too)
+make run
 
-# creates a debug binaries for both linux and windows
-./build.lua debug      # you can also use debug_linux and debug_windows
-
-# runs mindbasket using tcc (requires tcc), it produces a slower binary but it takes less time to compile.
-./build.lua run
-
-# clean up the mess.
-./build.lua cleanup
-
-# check out all the available options:
-./build.lua help
+# cleans up the mess (usually all self contained in out/)
+make clear
 ```
 
 ## tools I used:
@@ -41,7 +47,7 @@ sudo apt install -y libsdl2-dev ccache gcc luajit zip upx mingw-w64 git
 
 
 ## special thanks:
-  - God.
+  - GOD.
   - RXI for [json.lua](https://github.com/rxi/json.lua), [vec](https://github.com/rxi/vec) and [ini](https://github.com/rxi/ini), huge inspiration to me
   - Sean Barrett for his awesome [STB libraries](https://github.com/nothings/stb)
   - Kikito for [bump.lua](https://github.com/kikito/bump.lua)
@@ -52,4 +58,5 @@ sudo apt install -y libsdl2-dev ccache gcc luajit zip upx mingw-w64 git
   - The Simple DirectMedia Layer Team for [SDL](https://www.libsdl.org/), the base of my engine (and a lot of engines and tools out there)
   - My dad.
   - My mom.
-  - My friends.
+  - My brother.
+  - My friends (cyrneko, mike).

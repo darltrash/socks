@@ -82,7 +82,7 @@ local init = {
         local ok, r = pcall(require, "scripts." .. ent.tokens[2])
         ent.texture = { 496, 480, 16, 16 }
 
-        if r then
+        if ok then
             r(ent)
         end
 

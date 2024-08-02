@@ -13,8 +13,6 @@ local assets = require "assets"
 local entities = require "entities"
 local materials = require "material"
 
-local dome = eng.load_model "assets/mod_dome.exm"
-
 local camera = require "camera"
 
 local ball = {
@@ -26,6 +24,10 @@ local w, h = 450, 350
 
 local state = {
     init = function(self, world)
+        world = world or "hometown"
+        local world_file = "lvl_" .. world
+
+        eng.snapping(1)
         eng.ambient(0x19023dff)
         eng.videomode(w, h)
 
@@ -33,10 +35,23 @@ local state = {
             return
         end
 
+        if not assets.loaded(world_file) then
+            assets.load_screen({
+                world_file,
+                "mod_plane",
+                "mod_dome",
+                "mod_shadow",
+                "mod_sphere"
+            }, function()
+                eng.set_room(self, world)
+            end)
+
+            return
+        end
+
         --eng.dithering(false)
 
         self.far = 150
-        eng.far(self.far, 0x0c031aff)
 
         self.colliders = bump.newWorld()
 
@@ -46,14 +61,12 @@ local state = {
             counter = 0
         }
 
-        self.transition = {}
-        self.teleporters = {}
-        self.lights = {}
-        self.particles = {}
-        self.switches = {}
-        self.items = {}
+        self.transition = {
+            ease = "out",
+            a = 1
+        }
 
-        self.scrunge = 0
+        self.lights = {}
 
         self.easter_time = 5
         self.easter_bunny = ""
@@ -61,14 +74,10 @@ local state = {
 
         self.instructions = {}
 
-        world = world or "assets/lvl_hometown.exm"
-
-        self.world_mesh = assert(
-            eng.load_model(world),
-            "The idiot that wrote this game had a hard time adding the right path. (" .. world .. ")"
-        )
-
+        self.world_mesh = assets[world_file]
         self.world_mesh.submeshes = nil
+
+        self.particles = {}
 
         local vertex_format = "<fff"
         local triangles = {}
@@ -82,11 +91,9 @@ local state = {
 
         self.triangles = bvh.new(triangles)
 
-        eng.sound_play(assets.city, { looping = true })
+        eng.sound_play(assets.amb_city, { looping = true })
 
         eng.orientation({ -1, 0, 0 }, { 0, 0, 1 })
-
-        self.colliders = bump.newWorld()
 
         local data = json.decode(self.world_mesh.extra)
 
@@ -106,15 +113,16 @@ local state = {
         end
 
         for _, area in ipairs(data.trigger_areas) do
-            -- todo: check type
-
             area.id = area.name:gsub("(%.%d+)$", "")
+
             area.tokens = {}
             for word in string.gmatch(area.id, '([^/]+)') do
                 table.insert(area.tokens, word)
             end
+
             area.type = area.tokens[1] or area.id
             area.area = area.size and (vec3.length(area.size) / 2)
+
             local t = area.tokens[2] or ""
 
             local p = vec3.sub(area.position, area.size)
@@ -132,7 +140,7 @@ local state = {
                 --            })
             elseif area.type == "speaker" then
                 if area.tokens[2] then
-                    local src = ("assets/%s.ogg"):format(area.tokens[2])
+                    local src = assets[area.tokens[2]]
                     local snd = eng.load_sound(src, true)
 
                     eng.sound_play(snd, {
@@ -147,28 +155,28 @@ local state = {
         end
 
         for _, light in ipairs(data.lights) do
-            local entity = {}
+            light.id = light.name:gsub("(%.%d+)$", "")
 
-            entity.id = light.name:gsub("(%.%d+)$", "")
-            entity.tokens = {}
-            for word in string.gmatch(entity.id, '([^/]+)') do
-                table.insert(entity.tokens, word)
-            end
-            entity.position = light.position
-            entity.type = entity.tokens[1] or entity.id
-
-            entity.floats = true
-
-            for word in string.gmatch(entity.id, '([^/]+)') do
-                table.insert(entity.tokens, word)
+            light.tokens = {}
+            for word in string.gmatch(light.id, '([^/]+)') do
+                table.insert(light.tokens, word)
             end
 
-            entity.light = {
+            light.position = light.position
+            light.type = light.tokens[1] or light.id
+
+            light.floats = true
+
+            for word in string.gmatch(light.id, '([^/]+)') do
+                table.insert(light.tokens, word)
+            end
+
+            light.light = {
                 offset = { 0, 0, 0 },
                 color = vec3.mul_val(light.color, light.power * math.exp(-4.2))
             }
 
-            self:add_entity(entity)
+            self:add_entity(light)
         end
     end,
 
@@ -217,6 +225,8 @@ local state = {
         --    print("e")
         --    self:routine(require("scripts.pandatest"))
         --end
+
+        assets.tick()
 
         do
             local t = eng.text()
@@ -290,9 +300,7 @@ local state = {
 
         dialog.tick()
 
-        for x = #self.entities, 1, -1 do
-            local ent = self.entities[x]
-
+        for i, ent in ipairs(self.entities) do
             local a = entities.tick[ent.type]
             if a then
                 a(ent, self)
@@ -380,9 +388,7 @@ local state = {
 
             -- performs a swap remove if an entity has the .delete property
             if ent.delete then
-                self.entities[x] = self.entities[#self.entities]
-                self.entities[#self.entities] = nil
-                self.entities.map[ent.id] = nil
+                table.remove(self.entities, i)
 
                 if self.colliders:hasItem(ent) then
                     self.colliders:remove(ent)
@@ -400,7 +406,18 @@ local state = {
 
         if not self.transition.ease then
             if self.script then
+                ---@class ScriptEnv
+                ---@field self table
+                ---@field entities table
+                ---@field say fun(text: string)
+                ---@field actor fun(actor: string)
+                ---@field follow fun(follow: string)
+                ---@field focus fun(target: number[], dist: number, speed: number, is_listener: boolean?)
+                ---@field look_at fun(eye: number[], target: number[], speed: number, is_listener: boolean?)
+                ---@field force_focus fun(target: number[], dist: number, is_listener: boolean?)
+
                 local scripting = {
+                    self = self,
                     entities = self.entities,
 
                     say = dialog.say,
@@ -473,7 +490,7 @@ local state = {
                     table.remove(self.instructions, i)
                 elseif inst.type == "sfx" then
                     if not inst.real_source then
-                        inst.real_source = eng.load_sound(inst.src)
+                        inst.real_source = assets[inst.src]
                         inst.audio = eng.sound_play(inst.real_source)
                     end
 
@@ -487,10 +504,14 @@ local state = {
     end,
 
     frame = function(self, alpha, delta)
+        eng.far(self.far, 0x0c031aff)
+
         local cam = self.camera
 
+        local dome = assets.mod_dome
+
         for _, ent in ipairs(self.entities) do
-            if ent.invisible then return end
+            if ent.invisible then goto continue end
 
             if ent.light and not ent.light.off then
                 eng.light(ent.position, ent.light.color)
@@ -507,7 +528,7 @@ local state = {
                 fam.angle_lerp(ent._rotation[3], ent.rotation[3], alpha),
             }
 
-            ent.texture_swap = fam.lerp(ent.texture_swap or 1, 1, delta * 6)
+            ent.texture_swap = fam.decay(ent.texture_swap or 1, 1, 0.6, delta)
 
             local real_scale = s
 
@@ -529,7 +550,7 @@ local state = {
 
             eng.render {
                 model = model,
-                mesh = ent.mesh or assets.plane,
+                mesh = ent.mesh or assets.mod_plane,
                 tint = ent.tint,
                 texture = ent.texture
             }
@@ -593,7 +614,7 @@ local state = {
 
                     eng.render {
                         model = mat4.from_transform(n, e, size),
-                        mesh = assets.shadow,
+                        mesh = assets.mod_shadow,
                         tint = { 0, 0, 0, 180 }
                     }
                 end
@@ -614,7 +635,7 @@ local state = {
         end
 
         eng.render {
-            mesh = assets.sphere,
+            mesh = assets.mod_sphere,
             model = mat4.from_transform(ball.position, 0, 0.1),
             texture = { 0, 0, 1, 1 },
             tint = { 255, 0, 0, 255 }
@@ -631,7 +652,7 @@ local state = {
             p.life = p.life - (p.decay_rate * delta)
 
             eng.render {
-                mesh = assets.plane,
+                mesh = assets.mod_plane,
                 model = mat4.from_transform(p.position, 0, p.scale * (p.life ^ 2)),
                 texture = { 0, 0, 1, 1 },
                 tint = p.color
@@ -673,7 +694,7 @@ local state = {
         local trans = self.transition
         if trans.ease == "in" then
             if not trans.a then
-                eng.sound_play(assets.transition_in, { gain = 0.5 })
+                --eng.sound_play(assets.snd_transition_in, { gain = 0.5 })
                 trans.a = 0
             end
 
@@ -684,7 +705,7 @@ local state = {
                 if trans.callback then
                     trans.callback()
                 end
-                eng.sound_play(assets.transition_out, { gain = 0.5 })
+                --eng.sound_play(assets.snd_transition_out, { gain = 0.5 })
             end
         end
 
@@ -697,36 +718,33 @@ local state = {
             end
         end
 
+        -- TODO: Better transition
         if trans.a then
-            local tt = trans.a
+            local i = fam.unlerp(0, 0.7, trans.a)
 
-            local vw, vh = eng.size()
-            local cs = 16
-            local h = false
+            local w, h = eng.size()
+            w = w + 2
+            h = h + 2
 
-            for x = 0, vw / cs do
-                for y = 0, vh / cs do
-                    local t = tt ^ 2
+            local k = 1 / 4
 
-                    local tx = (-vw / 2) + (x * cs)
-                    local ty = (-vh / 2) + (y * cs)
-                    local s = vec3.length { tx / vw, ty / vh }
+            local t1 = fam.unlerp(k * 0, (k * 0) + k, i) ^ 2
+            local t2 = fam.unlerp(k * 1, (k * 1) + k, i) ^ 2
+            local t3 = fam.unlerp(k * 2, (k * 2) + k, i) ^ 2
+            local t4 = fam.unlerp(k * 3, (k * 3) + k, i) ^ 2
 
-                    local g = ((t * 1.7) - 0.5) + s
-                    local r = fam.inv_square(g) * cs
-                    local m = cs - r
+            local m = math.max(w, h) / fam.lerp(6, 2, fam.unlerp(0.7, 1.0, trans.a) ^ 3)
+            local wd = fam.lerp(0, m, (t1 + t2 + t3 + t4) / 4)
 
-                    if h then
-                        eng.rect(tx, ty + (m / 2), cs, r, { 0, 0, 0, fam.to_u8(g) })
-                    else
-                        eng.rect(tx + (m / 2), ty, r, cs, { 0, 0, 0, fam.to_u8(g) })
-                    end
+            eng.rect(-w / 2, -h / 2, w * t1, wd, { 0, 0, 0, fam.to_u8(t1) })
 
-                    h = not h
-                end
+            eng.rect((w / 2) - wd, -h / 2, wd, h * t2, { 0, 0, 0, fam.to_u8(t2) })
 
-                h = not h
-            end
+            local nw = w * t3
+            eng.rect((w / 2) - nw, (h / 2) - wd, nw, wd, { 0, 0, 0, fam.to_u8(t3) })
+
+            local nh = h * t4
+            eng.rect(-w / 2, (h / 2) - nh, wd, nh, { 0, 0, 0, fam.to_u8(t4) })
         end
 
         dialog.frame(delta)
