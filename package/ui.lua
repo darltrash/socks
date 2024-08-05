@@ -129,6 +129,28 @@ ui.font = {
     ['Ñ'] = { 0, 192, 7, 12, ox = 1, oy = 11 }
 }
 
+ui.mini_font = {}
+
+local len = string.byte('z') - string.byte('a')
+local rows = {
+    { "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k",  "l",    "m",    "n",     "o",      "p",     "q",     "r", "s",    "t", "u", "v", "w", "x", "y", "z" },
+    { 0,   1,   2,   3,   4,   5,   6,   7,   8,   9,   "up", "left", "down", "right", "period", "comma", "shift", "?", "space" }
+}
+
+for y, row in ipairs(rows) do
+    for x, element in ipairs(row) do
+        ui.mini_font[tostring(element)] = {
+            304 + (x - 1) * 6, 480 + (y - 1) * 6, 6, 6
+        }
+    end
+end
+
+local buttons = { "a", "b", "x", "y", "dpup", "dpleft", "dpdown", "dpright" }
+for i, v in ipairs(buttons) do
+    buttons[v] = { 320 + ((i - 1) * 16), 496, 16, 16 }
+end
+
+
 ui.font.fallback = ui.font["?"]
 
 ui.rounded_rect = function(x, y, w, h, color)
@@ -401,6 +423,22 @@ ui.funky_trongle = function(x1, y1, x2, y2, x3, y3, color)
         mesh = mesh,
         color = color
     }
+end
+
+ui.button = function(button, x, y, small)
+    local type, name = button:lower():match("(.+):(.+)$")
+
+    local s = small and 1 or 2
+
+    if type == "keyboard" then
+        --print(name)
+        eng.quad({ 304, 496, 16, 16 }, x, y, 0xFFFFFFFF, s, s)
+
+        local btn = ui.mini_font[name] or ui.mini_font["?"]
+        eng.quad(btn, x + s * 3, y + s * 3, 0xFFFFFFFF, s, s)
+    else
+        eng.quad(buttons[name], x, y, 0xFFFFFFFF, s, s)
+    end
 end
 
 return ui

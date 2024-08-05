@@ -199,6 +199,10 @@ eng.direction = function() end
 -- > NOTE: UPDATES ONCE EVERY TICK, NOT EVERY FRAME
 eng.input = function(key) end
 
+---@return {[inputs]: string[]}
+---@nodiscard
+eng.current_bind = function() end
+
 ---@return string
 -- Returns the accumulated text buffer
 -- > NOTE: UPDATES ONCE EVERY TICK, NOT EVERY FRAME

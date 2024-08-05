@@ -501,6 +501,8 @@ local state = {
                 end
             end
         end
+
+        --print(eng.last_binding("jump"))
     end,
 
     frame = function(self, alpha, delta)
@@ -687,7 +689,16 @@ local state = {
         if self.interactable then
             ---- 388, 500, 12, 12
             --eng.rect(-7, -7, 14, 14, 0xFFFFFFFF)
-            eng.quad({ 400, 496, 12, 12 }, -12, 100, 0xFFFFFFFF, 2, 2)
+            --eng.quad({ 400, 496, 12, 12 }, -12, 100, 0xFFFFFFFF, 2, 2)
+
+            local bind = eng.current_bind().menu
+
+            local x = #bind * -12
+
+            for k, v in ipairs(bind) do
+                ui.button(v, x + (k - 1) * 24, 100)
+            end
+            --
         end
 
         -- transition code

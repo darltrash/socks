@@ -2,10 +2,10 @@
 
 #include <stdio.h>
 #include <stdbool.h>
+#include <string.h>
 
 #define BASKET_INTERNAL
 #include "basket.h"
-#include "lib/vec.h"
 
 #include <SDL2/SDL_events.h>
 #include <SDL2/SDL_keyboard.h>
@@ -15,16 +15,12 @@
 #include <SDL2/SDL_joystick.h>
 
 #define MAX_CONTROLLERS 16
+#define MAX_BINDINGS 8
 
+static u8 bindings_len = 0;
+static Binding bindings[MAX_BINDINGS];
 static u32 state[INP_MAX];
-
-typedef struct {
-    u8 binding;
-    SDL_Scancode code;
-    SDL_GameControllerButton button;
-} InputBinding;
-
-static vec_t(InputBinding) bindings;
+static u8 current;
 
 static char text[32];
 static u16 mouse_x = 0;
@@ -81,10 +77,7 @@ void handle_focus_change(int index) {
 }
 
 int inp_init() {
-    if (bindings.data)
-        vec_deinit(&bindings);
-
-    vec_init(&bindings);
+    bindings_len = 0;
 
     u32 num_joysticks = SDL_NumJoysticks();
 
@@ -100,11 +93,18 @@ int inp_init() {
 }
 
 void inp_byebye() {
-    vec_deinit(&bindings);
-
     for (int i = 0; i < MAX_CONTROLLERS; ++i)
         if (controllers[i] != NULL)
             SDL_GameControllerClose(controllers[i]);
+}
+
+u8 find_in_binding(Binding bind, u32 btn) {
+    for (u8 action = INP_NONE+1; action < INP_MAX; ++action)
+        for (int i = 0; i < MAX_BUTTONS; ++i)
+            if (bind.buttons[action][i] == btn)
+                return action;
+
+    return INP_NONE;
 }
 
 static f32 controller_dir[2];
@@ -116,17 +116,26 @@ void inp_event(SDL_Event event) {
             if (event.key.repeat)
                 return;
 
-            for (u32 i = 0; i < bindings.length; i++) {
-                InputBinding b = bindings.data[i];
-                if (!b.binding) continue;
+            u32 scancode = event.key.keysym.scancode;
 
-                if (event.key.repeat) return;
+            u32 bind = find_in_binding(bindings[current], scancode);
 
-                if (event.key.keysym.scancode == b.code) {
-                    state[b.binding] = event.type == SDL_KEYDOWN;
-                    return;
+            if (bind == INP_NONE) {
+                for (u32 i=0; i < bindings_len; i++) {
+                    bind = find_in_binding(bindings[i], scancode);
+
+                    if (bind != INP_NONE) {
+                        current = i;
+                        break;
+                    }
                 }
             }
+
+            if (bind == INP_NONE)
+                return;
+
+            state[bind] = event.type == SDL_KEYDOWN;
+
             break;
         }
 
@@ -152,15 +161,25 @@ void inp_event(SDL_Event event) {
 
             if (event.cbutton.which != focused_controller) return;
 
-            for (u32 i = 0; i < bindings.length; i++) {
-                InputBinding b = bindings.data[i];
-                if (!b.binding) continue;
+            u32 button = event.cbutton.button + SDL_NUM_SCANCODES;
 
-                if (event.cbutton.button == b.button) {
-                    state[b.binding] = event.type == SDL_CONTROLLERBUTTONDOWN;
-                    return;
+            u32 binding = find_in_binding(bindings[current], button);
+
+            if (binding == INP_NONE) {
+                for (u32 i=0; i < bindings_len; i++) {
+                    binding = find_in_binding(bindings[i], button);
+
+                    if (binding != INP_NONE) {
+                        current = i;
+                        break;
+                    }
                 }
             }
+
+            if (binding == INP_NONE)
+                return;
+
+            state[binding] = event.type == SDL_CONTROLLERBUTTONDOWN;
 
             return;
         }
@@ -224,9 +243,9 @@ u32 inp_button(u8 button) {
     return state[button];
 }
 
-void inp_clear() {
-    vec_clear(&bindings);
-}
+//void inp_clear() {
+//    vec_clear(&bindings);
+//}
 
 bool inp_direction(f32 direction[2]) {
     float rlen = vec_len(controller_dir, 2);
@@ -260,52 +279,54 @@ bool inp_direction(f32 direction[2]) {
     return true;
 }
 
-static bool inp_register(SDL_Scancode scancode, u8 button) {
-    if (scancode == SDL_SCANCODE_UNKNOWN)
-        return false;
+static u32 inp_to_code(const char *name) {
+    if (strncmp(name, "gamepad:", 8) == 0)
+        return 512 + SDL_GameControllerGetButtonFromString(name + 8);
 
-    InputBinding binding = { button, scancode, 0 };
+    if (strncmp(name, "keyboard:", 9) == 0)
+        return SDL_GetScancodeFromName(name + 9);
 
-    vec_push(&bindings, binding);
-
-    return true;
+    return SDL_GetScancodeFromName(name);
 }
 
-void inp_register_scancode(const char *scancode, u8 button) {
-    SDL_Scancode code = SDL_GetScancodeFromName(scancode);
+char *inp_from_code(u32 code) {
+    const char *str;
 
-    inp_register(code, button);
+    if (code > 512)
+        str = SDL_GameControllerGetStringForButton(code - 512);
+    else
+        str = SDL_GetKeyName(SDL_GetKeyFromScancode(code));
+
+    if (str == NULL || str[0] == 0)
+        return NULL;
+
+    char buffer[32];
+    snprintf(buffer, 32, code > 512 ? "gamepad:%s" : "keyboard:%s", str);
+
+    return strdup(buffer);
 }
 
-void inp_register_keycode(const char *keycode, u8 button) {
-    SDL_Scancode code = SDL_GetScancodeFromKey(SDL_GetKeyFromName(keycode));
+static void fill_action(u32 action, char **names, Binding *binding) {
+    if (!names) return; // If names are null, skip
 
-    inp_register(code, button);
-}
-
-void inp_register_controller_button(const char *controller_button, u8 button) {
-    SDL_GameControllerButton btn = SDL_GameControllerGetButtonFromString(controller_button);
-
-    if (btn == SDL_CONTROLLER_AXIS_INVALID)
-        return;
-
-    InputBinding binding = { button, 0, btn };
-
-    vec_push(&bindings, binding);
-}
-
-
-// TODO: Somehow handle several keys assigned to the same button
-const char *inp_get_key(u8 button) {
-    for (u8 i = 0; i < bindings.length; i++) {
-        InputBinding binding = bindings.data[i];
-        if (!binding.code) break;
-
-        if (binding.binding == button)
-            return SDL_GetKeyName(SDL_GetKeyFromScancode(binding.code));
-
-        i++;
+    for (int i = 0; i < MAX_BUTTONS && names[i] != NULL; ++i) {
+        binding->buttons[action][i] = inp_to_code(names[i]);
     }
+}
 
-    return NULL;
+void inp_bind(RawBindings raw) {
+    Binding *binding = &bindings[bindings_len++];
+    memset(binding, 0, sizeof(Binding));
+
+    fill_action(INP_UP, raw.up, binding);
+    fill_action(INP_DOWN, raw.down, binding);
+    fill_action(INP_LEFT, raw.left, binding);
+    fill_action(INP_RIGHT, raw.right, binding);
+    fill_action(INP_JUMP, raw.jump, binding);
+    fill_action(INP_ATTACK, raw.attack, binding);
+    fill_action(INP_MENU, raw.menu, binding);
+}
+
+Binding inp_current() {
+    return bindings[current];
 }

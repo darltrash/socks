@@ -363,18 +363,34 @@ void pool_free(VertexPool* node);
         INP_MAX
     };
 
+    typedef struct {
+        char ** up;
+        char ** down;
+        char ** left;
+        char ** right;
+
+        char ** jump;
+        char ** attack;
+        char ** menu;
+    } RawBindings;
+
+    #define MAX_BUTTONS 8
+
+    typedef struct {
+        u32 buttons[INP_MAX][MAX_BUTTONS];
+    } Binding;
+
+    void inp_bind(RawBindings controller);
+
     const char *inp_text();
-    void inp_clear();
     u32 inp_button(u8 button);
     bool inp_direction(f32 direction[2]);
+    Binding inp_current();
+    char *inp_from_code(u32 code);
 
     void inp_mouse_position(u16 *x, u16 *y);
     bool inp_mouse_down(u8 button);
 
-    void inp_register_scancode(const char *scancode, u8 button);
-    void inp_register_keycode(const char *keycode, u8 button);
-    void inp_register_controller_button(const char *controller_button, u8 button);
-    const char *inp_get_key(u8 button);
 
     #ifdef BASKET_INTERNAL
         int inp_init();

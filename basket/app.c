@@ -499,21 +499,21 @@ static int api_direction(lua_State *l) {
     return 3;
 }
 
-static int api_input(lua_State *l) {
-    // KEEP THIS SYNCED WITH COMMON.H
-    const char *options[] = {
-        "none",
-        "up",
-        "down",
-        "left",
-        "right",
-        "jump",
-        "attack",
-        "menu",
-        NULL
-    };
+// KEEP THIS SYNCED WITH COMMON.H
+const char *buttons[] = {
+    "none",
+    "up",
+    "down",
+    "left",
+    "right",
+    "jump",
+    "attack",
+    "menu",
+    NULL
+};
 
-    int e = luaL_checkoption(l, 1, NULL, options);
+static int api_input(lua_State *l) {
+    int e = luaL_checkoption(l, 1, NULL, buttons);
     int o = inp_button(e);
 
     if (o)
@@ -523,6 +523,34 @@ static int api_input(lua_State *l) {
 
     return 1;
 }
+
+static int api_current_bind(lua_State *l) {
+    Binding current = inp_current();
+
+    lua_newtable(l);
+
+    for (int action = 0; action < INP_MAX; action++) {
+        lua_pushstring(L, buttons[action]);
+        lua_newtable(L);
+
+        for (int j = 0; j < MAX_BUTTONS; ++j) {
+            char *data = inp_from_code(current.buttons[action][j]);
+            if (data == NULL) break;
+
+            lua_pushinteger(L, j + 1);
+            lua_pushstring(L, data);
+            lua_settable(L, -3);
+
+            free(data);
+        }
+
+        // Pop the table and set it in the main table
+        lua_settable(L, -3);
+    }
+
+    return 1;
+}
+
 
 static int api_text( lua_State *l) {
     lua_pushstring(l, inp_text());
@@ -930,22 +958,23 @@ static const luaL_Reg full_registry[] = {
 
     { "wait",       api_wait       },
 
-    { "reload_tex", api_reload_tex },
-    { "videomode",  api_videomode  },
-    { "camera",     api_camera     },
-    { "render",     api_render     },
-    { "draw",       api_draw       },
-    { "light",      api_light      },
-    { "far",        api_far        },
-    { "dithering",  api_dithering  },
-    { "ambient",    api_ambient    },
-    { "snapping",   api_snapping   },
-    { "quad",       api_quad       },
-    { "rect",       api_rect       },
-    { "direction",  api_direction  },
-    { "input",      api_input      },
-    { "text",       api_text       },
-    { "log",        api_log        },
+    { "reload_tex",   api_reload_tex   },
+    { "videomode",    api_videomode    },
+    { "camera",       api_camera       },
+    { "render",       api_render       },
+    { "draw",         api_draw         },
+    { "light",        api_light        },
+    { "far",          api_far          },
+    { "dithering",    api_dithering    },
+    { "ambient",      api_ambient      },
+    { "snapping",     api_snapping     },
+    { "quad",         api_quad         },
+    { "rect",         api_rect         },
+    { "direction",    api_direction    },
+    { "input",        api_input        },
+    { "current_bind", api_current_bind },
+    { "text",         api_text         },
+    { "log",          api_log          },
 
     { "mouse_down",         api_mouse_down         },
     { "mouse_position",     api_mouse_position     },

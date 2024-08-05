@@ -2,6 +2,7 @@
 
 #include <SDL2/SDL_messagebox.h>
 #include <assert.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -127,6 +128,13 @@ const char *eng_error_string(int error) {
         goto general_error;            \
 }
 
+static void register_simple_controls(
+    const char *up, const char *down, const char *left, const char *right,
+    const char *jump, const char *attack, const char *menu
+) {
+
+}
+
 int eng_main(Application app, const char *arg0) {
     printf("hello world, i'm basket.\n");
 
@@ -171,32 +179,38 @@ int eng_main(Application app, const char *arg0) {
     if (ret)
         goto inp_init_error;
 
-    inp_register_scancode("w", INP_UP    ),
-    inp_register_scancode("s", INP_DOWN  ),
-    inp_register_scancode("a", INP_LEFT  ),
-    inp_register_scancode("d", INP_RIGHT ),
+    inp_bind((RawBindings) {
+        .up     = (char *[]) {"w", 0},
+        .down   = (char *[]) {"s", 0},
+        .left   = (char *[]) {"a", 0},
+        .right  = (char *[]) {"d", 0},
 
-    inp_register_scancode("j", INP_JUMP   ),
-    inp_register_scancode("k", INP_ATTACK ),
-    inp_register_scancode("l", INP_MENU   ),
+        .jump   = (char *[]) {"j", "space", 0},
+        .attack = (char *[]) {"k", 0},
+        .menu   = (char *[]) {"l", 0}
+    });
 
-    inp_register_scancode("up",    INP_UP    ),
-    inp_register_scancode("down",  INP_DOWN  ),
-    inp_register_scancode("left",  INP_LEFT  ),
-    inp_register_scancode("right", INP_RIGHT ),
+    inp_bind((RawBindings) {
+        .up     = (char *[]) {"up"   , 0},
+        .down   = (char *[]) {"down" , 0},
+        .left   = (char *[]) {"left" , 0},
+        .right  = (char *[]) {"right", 0},
 
-    inp_register_scancode("z", INP_JUMP   ),
-    inp_register_scancode("x", INP_ATTACK ),
-    inp_register_scancode("c", INP_MENU   ),
+        .jump   = (char *[]) {"z", "space", 0},
+        .attack = (char *[]) {"x", 0},
+        .menu   = (char *[]) {"c", 0}
+    });
 
-    inp_register_controller_button("dpad_left", INP_LEFT);
+    inp_bind((RawBindings) {
+        .up     = (char *[]) {"gamepad:dpup",    0},
+        .down   = (char *[]) {"gamepad:dpdown",  0},
+        .left   = (char *[]) {"gamepad:dpleft",  0},
+        .right  = (char *[]) {"gamepad:dpright", 0},
 
-    inp_register_controller_button("a", INP_JUMP);
-    inp_register_controller_button("b", INP_ATTACK);
-    inp_register_controller_button("c", INP_MENU);
-
-    // sigh...
-    inp_register_scancode("space", INP_JUMP);
+        .jump   = (char *[]) {"gamepad:a", 0},
+        .attack = (char *[]) {"gamepad:b", 0},
+        .menu   = (char *[]) {"gamepad:x", 0}
+    });
 
     eng_tickrate(30);
 
