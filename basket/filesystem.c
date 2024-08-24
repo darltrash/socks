@@ -15,26 +15,30 @@
     #include <unistd.h>
 #endif
 
-int chdir_to_path(const char *exec_path) {
-    char path[1024];
-    strncpy(path, exec_path, sizeof(path) - 1);
-    path[sizeof(path) - 1] = '\0';
+#ifdef WIN32
+    #define realpath(N,R) _fullpath((R),(N),PATH_MAX)
+#endif
 
-    char *last_slash = strrchr(path, PATH_SEPARATOR);
+static int chdir_to_path(const char *exec_path) {
+    char resolved_path[1024];
+
+    if (realpath(exec_path, resolved_path) == NULL)
+        return 1;
+
+    char *last_slash = strrchr(resolved_path, PATH_SEPARATOR);
 
     if (last_slash == NULL)
         return 1;
 
     *last_slash = '\0';
 
-    return chdir(path);
+    return chdir(resolved_path);
 }
-
 
 #ifdef FS_STATIC_FILES
     #include "static.h"
 
-   ·char *fs_read(const char *name, u32 *size) {
+    char *fs_read(const char *name, u32 *size) {
         //printf("reading file %s\n", name);
 
         u8 a = 0;
