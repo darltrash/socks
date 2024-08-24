@@ -50,19 +50,16 @@ OUTS := $(foreach FILE, $(subst /,_, $(OBJS)), $(OUT)$(FILE))
 
 # Builds the game for the platform described in the above variables
 build: pack $(OBJS)
-	$(shell mkdir -p $(OUT))
+	@mkdir -p $(OUT)
 	$(LINKER) $(CFLAGS) $(OBJS) -o $(OUT)socks $(DEPEND)
 	@cp package.bsk $(OUT)
-	rm -rf $(OUT)/*.zip
+	@rm -rf $(OUT)/*.zip
 	@cp $(OUT)socks* .
-	cd $(OUT); zip -9 socks-$(PRETTYNAME).zip * -x *.zip basket/
+	@cd $(OUT); zip -9 socks-$(PRETTYNAME).zip * -x *.zip basket/
 
 # Wraps over Make, overriding the platform variables
 mingw32-64:
-	$(shell mkdir -p $(OUT_PATH)/mingw32-64)
-	cp basket/lib/bin/* $(OUT_PATH)/mingw32-64/
-
-	make \
+	@make \
 	NAME=mingw32-64 \
 	PRETTYNAME=windows-x64_64 \
 	MODE=$(MODE) \
@@ -70,6 +67,9 @@ mingw32-64:
 	STRIP=x86_64-w64-mingw32-strip \
 	PKG-CONFIG=x86_64-w64-mingw32-pkg-config \
 	build
+
+	@cp basket/lib/bin/* $(OUT_PATH)/mingw32-64/
+
 
 SHADER_DIR = basket/shaders/
 shader: $(SHADER_DIR)/*

@@ -8,6 +8,7 @@
 
 #ifdef _WIN32
     #include <windows.h>
+    #include <libloaderapi.h>
     #define PATH_SEPARATOR '\\'
     #define chdir(path) (!SetCurrentDirectory(path))
 #elif __APPLE__
@@ -25,7 +26,7 @@ static int chdir_to_path(const char *exec_path) {
     char resolved_path[1024];
 
     #ifdef _WIN32
-        GetModuleFilename(NULL, resolved_path, sizeof(resolved_path));
+        GetModuleFileNameA(NULL, resolved_path, sizeof(resolved_path));
     #elif __linux__
         size_t s = readlink("/proc/self/exe", resolved_path, sizeof(resolved_path));
         resolved_path[s] = 0;
