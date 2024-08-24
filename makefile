@@ -114,7 +114,7 @@ clean:
 	rm -f $(OBJS)
 
 PREFIX ?= /usr
-install:
+install: build
 	@install -D $(OUT)/socks $(PREFIX)/bin/socks
 	@install -D $(OUT)/package.bsk $(PREFIX)/bin/package.bsk
 	@install -D $(OUT)/io.itch.darltrash.sleepyhead.desktop $(PREFIX)/share/applications/io.itch.darltrash.sleepyhead.desktop
