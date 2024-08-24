@@ -91,6 +91,7 @@ SHARE = $(PREFIX)/share/$(RDNN)
 install: build
 	# ONLY VALID FOR LINUX!
 	# EXISTS SOLELY BECAUSE OF FLATPAK-BUILDER
+	@mkdir -p $(PREFIX)/bin
 	@mkdir -p $(SHARE)/
 	@install -D $(GAME) $(SHARE)/game
 	@install -D package.bsk $(SHARE)/package.bsk
