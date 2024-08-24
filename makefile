@@ -49,7 +49,7 @@ OBJS := $(patsubst %.c, $(OUT)%.o, $(SRCS))
 OUTS := $(foreach FILE, $(subst /,_, $(OBJS)), $(OUT)$(FILE))
 
 # Builds the game for the platform described in the above variables
-build: shader pack $(OBJS)
+build: pack $(OBJS)
 	$(shell mkdir -p $(OUT))
 	$(LINKER) $(CFLAGS) $(OBJS) -o $(OUT)socks $(DEPEND)
 	@cp package.bsk $(OUT)
@@ -112,6 +112,13 @@ $(OUT)%.o: %.c
 # Clean target
 clean:
 	rm -f $(OBJS)
+
+PREFIX ?= /usr
+install:
+	@install -D $(OUT)/socks $(PREFIX)/bin/socks
+	@install -D $(OUT)/package.bsk $(PREFIX)/bin/package.bsk
+	@install -D $(OUT)/io.itch.darltrash.sleepyhead.desktop $(PREFIX)/share/applications/io.itch.darltrash.sleepyhead.desktop
+	@install -D $(OUT)/io.itch.darltrash.sleepyhead.svg $(PREFIX)/share/icons/io.itch.darltrash.sleepyhead.svg
 
 .PHONY: clean
 

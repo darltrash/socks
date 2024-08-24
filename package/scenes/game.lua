@@ -15,6 +15,8 @@ local materials = require "material"
 
 local camera = require "camera"
 
+local save = require "save"
+
 local ball = {
     position = { 0, 0, 0 },
     velocity = { 0, 0, 0 }
@@ -27,7 +29,7 @@ local state = {
         world = world or "hometown"
         local world_file = "lvl_" .. world
 
-        eng.snapping(1)
+        eng.snapping(0)
         eng.ambient(0x19023dff)
         eng.videomode(w, h)
 

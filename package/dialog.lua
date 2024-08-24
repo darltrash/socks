@@ -13,6 +13,8 @@ local w, h = 450, 350
 local tick = eng.load_sound("assets/snd_tick.ogg")
 
 dialog.actor = function(actor)
+    actor = actor or "default"
+
     local s = {}
     for str in actor:gmatch("([^:]+)") do
         table.insert(s, str)
@@ -116,18 +118,25 @@ dialog.frame = function(delta)
 
     local r = fam.to_u8((1 - dialog.switch_up) * 1.1)
 
-    local c1 = { 0xd4, 0xbe, 0xfa, r }
+    local avatar = nil
+
+    local c1 = { 0xd4, 0xbe, 0xfa, 255 }
+    if dialog.character then
+        c1 = dialog.character.bg or c1
+        avatar = dialog.character.avatar
+    end
+
+    c1[4] = r
+
     local c2 = { 0x33, 0x00, 0x33, r }
     ui.rounded_rect((-w / 2) + m + mx, (h / 2) - (hh + m) + e, rw, hh, c1)
 
-    if dialog.character then
+
+
+    if avatar then
         ui.print(dialog.text, (-w / 2) + (m * 2) + mx + 66, (h / 2) - hh + e, c2, rw - 80)
 
         local y = (h / 2) - (160)
-
-        --eng.rect((-w/2)+(m*2)+mx+66, (h/2)-hh-(m/2), rw-80, hh-(m), 0xFF00FFFF
-
-        local avatar = dialog.character.avatar
 
         eng.draw {
             mesh = avatar,

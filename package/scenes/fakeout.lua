@@ -1,14 +1,8 @@
-eng.set_room {
-    frame = function(self)
-
-    end
-}
-
 local string =
 [[FATAL ERROR:  - DO NOT REPORT THIS!
 
 ENV HALT:
-	game.lua:36: Buffer overflow!
+    game.lua:36: Buffer overflow!
 
 TRACEBACK:
 → [C]: in function 'error'
@@ -49,24 +43,38 @@ SPECIAL THANKS:
 
 
 Thanks for playing my game!
+
+
+
+
+
 Love yourself.
 ]]
 
 
 local ui = require "ui"
 
-eng.videomode(400, 300)
-
-eng.set_room {
-    init = function()
+return {
+    init = function(self)
+        eng.videomode(400, 300)
         eng.far(0, 0x00000000)
+
+        self.t = 0
+        self.speed = 0
     end,
 
-    frame = function()
+    frame = function(self, delta)
         local str = "FATAL ERROR:"
         local w = ui.text_size(str)
 
-        eng.rect(-138, -49, w + 16, 16, 0xFF0353FF)
-        ui.print(string)
+        eng.rect(-138, -49 - self.t, w + 16, 16, 0xFF0353FF)
+        ui.print(string, -131, -44 - self.t)
+
+        self.speed = math.min(1, self.speed + delta * 0.01)
+        self.t = self.t + (delta * self.speed)
+
+        if self.t > 1200 then
+            os.exit()
+        end
     end
 }

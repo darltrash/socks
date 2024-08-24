@@ -188,6 +188,7 @@ void inp_event(SDL_Event event) {
             if (event.caxis.which != focused_controller) return;
             if (event.caxis.axis >= 2) return;
             controller_dir[event.caxis.axis] = (float)(event.caxis.value) / 32768.0;
+
             return; // AXIS1:X   AXIS2:Y
         }
 
@@ -249,7 +250,8 @@ u32 inp_button(u8 button) {
 
 bool inp_direction(f32 direction[2]) {
     float rlen = vec_len(controller_dir, 2);
-    if (rlen > 0.01) {
+
+    if (rlen > 0.2) {
         direction[0] = controller_dir[0];
         direction[1] = controller_dir[1];
         return true;

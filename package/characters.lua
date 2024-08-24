@@ -11,11 +11,12 @@ chars.default = {
     }
 }
 
+-- body without organs
 chars.demo = {
     avatar = eng.load_model("assets/chr_demoman.exm"),
     name = "demo",
 
-    bg = { 0xee, 0xaa, 0xff, 255 },
+    bg = { 0x88, 0xaa, 0xff, 255 },
 
     speech = {
         eng.load_sound("assets/snd_speech_demoman0.ogg"),

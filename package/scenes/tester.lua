@@ -13,6 +13,12 @@ return {
         if eng.input("up") then
             self.i = 0
         end
+
+        if self.i == 1 then
+            eng.set_room(
+                require("scenes.init")
+            )
+        end
     end,
 
     frame = function(self, alpha, delta)

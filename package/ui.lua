@@ -441,4 +441,43 @@ ui.button = function(button, x, y, small)
     end
 end
 
+
+ui.crap_menu = {}
+
+ui.crap_menu.tick = function(self)
+    if eng.input('up') == 1 then
+        self.selected = self.selected - 1
+        if self.selected < 1 then
+            self.selected = #self
+        end
+    end
+
+    if eng.input('down') == 1 then
+        self.selected = self.selected + 1
+        if self.selected > #self then
+            self.selected = 1
+        end
+    end
+
+    return eng.input("jump") == 1 and self.selected
+end
+
+ui.crap_menu.frame = function(self, x, y)
+    for i, v in ipairs(self) do
+        v = (self.selected == i and "→ " or "  ") .. v
+        print_naive(v, x, y + (i - 1) * 10, 0xFFFFFFFF)
+    end
+end
+
+ui.crap_menu.new = function(options)
+    options.selected = options.selected or 1
+
+    return setmetatable(options, { __index = ui.crap_menu })
+end
+
+ui.crap_menu.__call = function(self, ...) return ui.crap_menu.new(...) end
+
+setmetatable(ui.crap_menu, ui.crap_menu)
+
+
 return ui

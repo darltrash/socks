@@ -128,15 +128,35 @@ const char *eng_error_string(int error) {
         goto general_error;            \
 }
 
-static void register_simple_controls(
-    const char *up, const char *down, const char *left, const char *right,
-    const char *jump, const char *attack, const char *menu
-) {
+static bool is_tty = false;
+
+#ifdef _WIN32
+    #include <windows.h>
+
+    int is_terminal() {
+        HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
+        DWORD mode;
+        return GetConsoleMode(hStdout, &mode);
+    }
+#else
+    #include <unistd.h>
+    int is_terminal() {
+        return isatty(fileno(stdout));
+    }
+#endif
+
+static void on_failure() {
+    printf("!!! Basket has encountered a FATAL error!\n");
+
 
 }
 
 int eng_main(Application app, const char *arg0) {
     printf("hello world, i'm basket.\n");
+
+    if (!is_terminal()) {
+        freopen("/tmp/BASKETLOG.txt", "a+", stdout);
+    }
 
     SDL_Init( 0
         | SDL_INIT_VIDEO

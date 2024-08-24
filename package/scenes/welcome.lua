@@ -29,14 +29,15 @@ local function ask(msg, answers)
 end
 
 local function speech()
-    light_mode = ask("Can you read this properly?", {"Yes", "No"}) == 2
+    light_mode = ask("Can you read this properly?", { "Yes", "No" }) == 2
     if light_mode then
-        light_mode = ask("What about now?", {"Better.", "Revert it."}) == 1
+        light_mode = ask("What about now?", { "Better.", "Revert it." }) == 1
     end
 
     say "So, I've made a little something for you to experience, it's something that I've been meaning to show you for a while..."
     say "It's very important to me, so, if you could give me feedback about it, I will be available on my Signal or PM through Fedi."
-    local photosensitive = ask("As far as I am aware, you're not photosensitive, are you?", {"I am.", "I am not."}) == 1
+    local photosensitive = ask("As far as I am aware, you're not photosensitive, are you?", { "I am.", "I am not." }) ==
+    1
 
     if photosensitive then
         say "Then...\nI am sorry, I am not sure I want you to play this game, I will close the game now."
@@ -50,10 +51,10 @@ local function speech()
     say "Goodnight, Sleepyhead!"
 end
 
-eng.set_room {
+return {
     routine = coroutine.create(speech),
-    
-    init = function (self)
+
+    init = function(self)
         eng.videomode(300, 200)
 
         precursor = 0
@@ -65,7 +66,7 @@ eng.set_room {
         light_mode = false
     end,
 
-    tick = function (self)
+    tick = function(self)
         local v = 0.53
         local c = math.floor(cursor)
         local k = text:sub(c, c)
@@ -119,7 +120,7 @@ eng.set_room {
 
     -- 2:40 pm
 
-    frame = function (self)
+    frame = function(self)
         local color_a = light_mode and 0xFFFFEBFF or 0x101010FF
         local color_b = light_mode and 0x101010FF or 0xFFFFEBFF
 
@@ -132,10 +133,10 @@ eng.set_room {
         if options and cursor == #text then
             for i, option in ipairs(options) do
                 if selection == i then
-                    eng.rect(-124, (30 + ((i-1) * 20)) - 5, 100, 16, color_b)
-                    ui.print(option, -120, 30 + ((i-1) * 20), color_a)
+                    eng.rect(-124, (30 + ((i - 1) * 20)) - 5, 100, 16, color_b)
+                    ui.print(option, -120, 30 + ((i - 1) * 20), color_a)
                 else
-                    ui.print(option, -120, 30 + ((i-1) * 20), color_b)
+                    ui.print(option, -120, 30 + ((i - 1) * 20), color_b)
                 end
             end
         end

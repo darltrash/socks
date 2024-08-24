@@ -104,8 +104,16 @@ assets.load_screen = function(which_files, callback)
             time = time - delta
             local t = assets.tick()
 
-            if t == 0 and time < 0.0 and not fade_out then
-                fade_out = 1
+            if t == 0 then
+                if time < 0.0 and not fade_out then
+                    fade_out = 1
+                end
+
+                if assets.FUCKITWEBALL then
+                    print("UG!")
+                    callback()
+                    eng.sound_stop(s)
+                end
             end
 
             if fade_out then

@@ -90,5 +90,5 @@ local function load(what, ...)
     end, on_error, what, ...)
 end
 
-load("game")
+load("scenes.init")
 --load("tester")

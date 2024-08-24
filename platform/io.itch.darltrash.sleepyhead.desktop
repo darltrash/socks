@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+
+Name=Sleepyhead
+Comment=the game :)
+
+Path=/app/bin/
+Exec=/app/bin/socks
+Icon=socks
+Terminal=false
+Categories=Entertainment

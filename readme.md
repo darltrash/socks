@@ -6,7 +6,8 @@
 in theory this should also work on Windows using Msys2, obviously also in WSL,
 but i haven't tested it, at all.
 
-it should only require the sdl2 headers to work (alongside the libc ofc), everything else is already bundled in the project.
+it should only require the sdl2 headers to work (alongside the libc ofc), everything
+else is already bundled in the project.
 
 this uses pkg-config for the libraries that the program needs, you can skip
 that by setting the DEPEND variable to cc arguments, or even set PKG-CONFIG.
