@@ -117,8 +117,8 @@ PREFIX ?= /usr
 install: build
 	@install -D $(OUT)/socks $(PREFIX)/bin/socks
 	@install -D $(OUT)/package.bsk $(PREFIX)/bin/package.bsk
-	@install -D $(OUT)/io.itch.darltrash.sleepyhead.desktop $(PREFIX)/share/applications/io.itch.darltrash.sleepyhead.desktop
-	@install -D $(OUT)/io.itch.darltrash.sleepyhead.svg $(PREFIX)/share/icons/io.itch.darltrash.sleepyhead.svg
+	@install -D platform/io.itch.darltrash.sleepyhead.desktop $(PREFIX)/share/applications/io.itch.darltrash.sleepyhead.desktop
+	@install -D platform/io.itch.darltrash.sleepyhead.svg $(PREFIX)/share/icons/io.itch.darltrash.sleepyhead.svg
 
 .PHONY: clean
 
