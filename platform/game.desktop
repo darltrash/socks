@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Sleepyhead
+Exec=io.itch.darltrash.sleepyhead
+Icon=io.itch.darltrash.sleepyhead
+Terminal=false
+Categories=Game;
+
+# And the universe said I love you because you are love.

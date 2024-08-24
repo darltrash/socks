@@ -27,18 +27,23 @@ static int chdir_to_path(const char *exec_path) {
 
     #ifdef _WIN32
         GetModuleFileNameA(NULL, resolved_path, sizeof(resolved_path));
+
     #elif __linux__
         size_t s = readlink("/proc/self/exe", resolved_path, sizeof(resolved_path));
         resolved_path[s] = 0;
+
     #elif __FreeBSD__
         size_t s = readlink("/proc/curproc/file", resolved_path, sizeof(resolved_path));
         resolved_path[s] = 0;
+
     #elif __APPLE__
         size_t s = 0;
         _NSGetExecutablePath(resolved_path, &s);
+
     #else
         if (realpath(exec_path, resolved_path) == NULL)
             return 1;
+
     #endif
 
     char *last_slash = strrchr(resolved_path, PATH_SEPARATOR);

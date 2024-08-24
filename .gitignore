@@ -1,7 +1,7 @@
 *.o
 *.upx
-socks
-socks*
+sleepyhead
+sleepyhead*
 out/
 raw/*.blend*
 !raw/*.blend

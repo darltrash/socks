@@ -12,6 +12,9 @@
 #
 # - Copies ./package.bsk to out/$NAME/
 
+GAME = sleepyhead
+RDNN = io.itch.darltrash.$(GAME)
+
 # Use all cores
 CORES = $(shell getconf _NPROCESSORS_ONLN)
 MAKEFLAGS += -j$(CORES)
@@ -51,11 +54,11 @@ OUTS := $(foreach FILE, $(subst /,_, $(OBJS)), $(OUT)$(FILE))
 # Builds the game for the platform described in the above variables
 build: pack $(OBJS)
 	@mkdir -p $(OUT)
-	$(LINKER) $(CFLAGS) $(OBJS) -o $(OUT)socks $(DEPEND)
+	$(LINKER) $(CFLAGS) $(OBJS) -o $(OUT)$(GAME) $(DEPEND)
 	@cp package.bsk $(OUT)
 	@rm -rf $(OUT)/*.zip
-	@cp $(OUT)socks* .
-	@cd $(OUT); zip -9 socks-$(PRETTYNAME).zip * -x *.zip basket/
+	@cp $(OUT)$(GAME)* .
+	@cd $(OUT); zip -9 $(GAME)-$(PRETTYNAME).zip * -x *.zip basket/
 
 # Wraps over Make, overriding the platform variables
 mingw32-64:
@@ -81,6 +84,20 @@ shader: $(SHADER_DIR)/*
 # Packs the assets
 pack:
 	@cd package; zip -9 ../package.bsk -r *
+
+PREFIX ?= /usr
+SHARE = $(PREFIX)/share/$(RDNN)
+
+install: build
+	# ONLY VALID FOR LINUX!
+	# EXISTS SOLELY BECAUSE OF FLATPAK-BUILDER
+	@mkdir -p $(SHARE)/
+	@install -D $(GAME) $(SHARE)/game
+	@install -D package.bsk $(SHARE)/package.bsk
+	@ln -s $(SHARE)/game $(PREFIX)/bin/$(RDNN)
+
+	@install -D platform/game.desktop $(PREFIX)/share/applications/$(RDNN).desktop
+	@install -D platform/game.svg $(PREFIX)/share/icons/$(RDNN).svg
 
 # Release both
 release:
