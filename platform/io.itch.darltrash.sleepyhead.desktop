@@ -5,8 +5,8 @@ Version=1.0
 Name=Sleepyhead
 Comment=the game :)
 
-Path=/app/bin/
+Path=/app/bin/socks
 Exec=/app/bin/socks
-Icon=socks
+Icon=io.itch.darltrash.sleepyhead
 Terminal=false
 Categories=Entertainment
